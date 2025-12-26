@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCart } from "./context/cartcontext";
@@ -7,6 +8,7 @@ import { useCart } from "./context/cartcontext";
 export default function Navbar() {
   const pathname = usePathname();
   const { cartCount } = useCart();
+  const [open, setOpen] = useState(false);
 
   const isActive = (href) => pathname === href;
 
@@ -21,6 +23,7 @@ export default function Navbar() {
         borderBottom: "1px solid rgba(255,255,255,0.08)",
       }}
     >
+      {/* TOP BAR */}
       <div
         style={{
           maxWidth: "1100px",
@@ -29,85 +32,141 @@ export default function Navbar() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: "12px",
         }}
       >
-        {/* LEFT: BRAND */}
+        {/* LOGO */}
         <Link
           href="/"
+          onClick={() => setOpen(false)}
           style={{
             color: "#1dbf73",
             fontWeight: 800,
             fontSize: "20px",
-            letterSpacing: "0.5px",
             textDecoration: "none",
-            whiteSpace: "nowrap",
           }}
         >
           RangeBrothers
         </Link>
 
-        {/* RIGHT: LINKS (mobile-first compact) */}
+        {/* DESKTOP NAV */}
         <nav
           style={{
+            display: "none",
+            gap: "20px",
+          }}
+          className="desktop-nav"
+        >
+          <NavLinks
+            isActive={isActive}
+            cartCount={cartCount}
+            close={() => {}}
+          />
+        </nav>
+
+        {/* HAMBURGER */}
+        <button
+          onClick={() => setOpen(!open)}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "#fff",
+            fontSize: "26px",
+            cursor: "pointer",
+          }}
+          aria-label="Menu"
+        >
+          ☰
+        </button>
+      </div>
+
+      {/* MOBILE MENU */}
+      <div
+        style={{
+          maxHeight: open ? "300px" : "0",
+          overflow: "hidden",
+          transition: "max-height 0.35s ease",
+          background: "#02130d",
+          borderTop: open ? "1px solid rgba(255,255,255,0.08)" : "none",
+        }}
+      >
+        <div
+          style={{
             display: "flex",
-            alignItems: "center",
-            gap: "14px",
-            flexShrink: 0,
-            whiteSpace: "nowrap",
+            flexDirection: "column",
+            padding: open ? "16px" : "0 16px",
+            gap: "16px",
           }}
         >
-          <Link
-            href="/products"
-            style={{
-              color: isActive("/products") ? "#1dbf73" : "#ffffff",
-              textDecoration: "none",
-              fontWeight: 600,
-              fontSize: "16px",
-              opacity: isActive("/products") ? 1 : 0.9,
-            }}
-          >
-            Products
-          </Link>
-
-          <Link
-            href="/cart"
-            style={{
-              color: isActive("/cart") ? "#1dbf73" : "#ffffff",
-              textDecoration: "none",
-              fontWeight: 600,
-              fontSize: "16px",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              opacity: isActive("/cart") ? 1 : 0.9,
-            }}
-          >
-            <span style={{ fontSize: "18px" }}>🛒</span>
-            <span>Cart</span>
-
-            {/* Count pill */}
-            <span
-              style={{
-                minWidth: "22px",
-                height: "22px",
-                padding: "0 7px",
-                borderRadius: "999px",
-                background: "#1dbf73",
-                color: "#02130d",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "13px",
-                fontWeight: 800,
-                lineHeight: 1,
-              }}
-            >
-              {cartCount || 0}
-            </span>
-          </Link>
-        </nav>
+          <NavLinks
+            isActive={isActive}
+            cartCount={cartCount}
+            close={() => setOpen(false)}
+          />
+        </div>
       </div>
+
+      {/* CSS */}
+      <style jsx>{`
+        @media (min-width: 768px) {
+          button {
+            display: none;
+          }
+          .desktop-nav {
+            display: flex !important;
+          }
+          div[style*="max-height"] {
+            display: none;
+          }
+        }
+      `}</style>
     </header>
+  );
+}
+
+/* -------- LINKS COMPONENT -------- */
+function NavLinks({ isActive, cartCount, close }) {
+  return (
+    <>
+      <Link
+        href="/products"
+        onClick={close}
+        style={{
+          color: isActive("/products") ? "#1dbf73" : "#fff",
+          textDecoration: "none",
+          fontWeight: 600,
+          fontSize: "18px",
+        }}
+      >
+        Products
+      </Link>
+
+      <Link
+        href="/cart"
+        onClick={close}
+        style={{
+          color: isActive("/cart") ? "#1dbf73" : "#fff",
+          textDecoration: "none",
+          fontWeight: 600,
+          fontSize: "18px",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+        }}
+      >
+        🛒 Cart
+        <span
+          style={{
+            background: "#1dbf73",
+            color: "#02130d",
+            borderRadius: "999px",
+            padding: "2px 8px",
+            fontSize: "14px",
+            fontWeight: 800,
+          }}
+        >
+          {cartCount || 0}
+        </span>
+      </Link>
+    </>
   );
 }
