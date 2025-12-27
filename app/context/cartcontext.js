@@ -2,56 +2,79 @@
 
 import { createContext, useContext, useState } from "react";
 
-const cartcontext = createContext();
+const CartContext = createContext(null);
 
 export function CartProvider({ children }) {
   const [cart, setCart] = useState([]);
 
-  function addToCart(item) {
+  // ADD ITEM
+  const addToCart = (product) => {
     setCart((prev) => {
       const existing = prev.find(
-        (p) =>
-          p.id === item.id &&
-          p.color === item.color &&
-          p.storage === item.storage
+        (item) =>
+          item.id === product.id &&
+          item.storage === product.storage &&
+          item.color === product.color
       );
 
       if (existing) {
-        return prev.map((p) =>
-          p === existing ? { ...p, qty: p.qty + 1 } : p
+        return prev.map((item) =>
+          item === existing
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
         );
       }
 
-      return [...prev, { ...item, qty: 1 }];
+      return [...prev, { ...product, quantity: 1 }];
     });
-  }
+  };
 
-  function removeFromCart(index) {
-    setCart((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function updateQty(index, qty) {
+  // INCREASE QTY
+  const increaseQty = (index) => {
     setCart((prev) =>
       prev.map((item, i) =>
-        i === index ? { ...item, qty: Math.max(1, qty) } : item
+        i === index ? { ...item, quantity: item.quantity + 1 } : item
       )
     );
-  }
+  };
 
-  function clearCart() {
-    setCart([]);
-  }
+  // DECREASE QTY
+  const decreaseQty = (index) => {
+    setCart((prev) =>
+      prev
+        .map((item, i) =>
+          i === index
+            ? { ...item, quantity: Math.max(1, item.quantity - 1) }
+            : item
+        )
+        .filter((item) => item.quantity > 0)
+    );
+  };
+
+  // REMOVE ITEM
+  const removeItem = (index) => {
+    setCart((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // CLEAR CART
+  const clearCart = () => setCart([]);
 
   return (
-    <cartcontext.Provider
-      value={{ cart, addToCart, removeFromCart, updateQty, clearCart }}
+    <CartContext.Provider
+      value={{
+        cart,
+        addToCart,
+        increaseQty,
+        decreaseQty,
+        removeItem,
+        clearCart,
+      }}
     >
       {children}
-    </cartcontext.Provider>
+    </CartContext.Provider>
   );
 }
 
 export function useCart() {
-  return useContext(cartcontext);
+  return useContext(CartContext);
 }
-
