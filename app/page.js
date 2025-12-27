@@ -1,82 +1,135 @@
+
 "use client";
 
-export default function Home() {
+import Link from "next/link";
+import { motion } from "framer-motion";
+
+export default function HomePage() {
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: "40px 20px",
-        background: "linear-gradient(180deg, #00140f, #00241a)",
-      }}
-    >
-      {/* TITLE */}
-      <h1
-        className="fade-in"
-        style={{
-          fontSize: "60px",
-          fontWeight: "700",
-          color: "#1dbf73",
-          marginBottom: "10px",
-          textShadow: "0 0 25px rgba(29, 191, 115, 0.4)",
-        }}
+    <div style={container}>
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        style={hero}
       >
-        RangeBrothers
-      </h1>
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          style={title}
+        >
+          Premium Smartphones
+          <br />
+          Delivered Across Malawi
+        </motion.h1>
 
-      {/* TAGLINE */}
-      <p
-        className="slide-up delay-1"
-        style={{
-          fontSize: "22px",
-          color: "#b8e6d2",
-          marginBottom: "25px",
-          textAlign: "center",
-          maxWidth: "750px",
-        }}
-      >
-        Premium Smartphones Delivered Across Malawi.
-      </p>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.25 }}
+          style={subtitle}
+        >
+          RangeBrothers imports verified phones directly from trusted suppliers.
+          Transparent pricing. No surprises.
+        </motion.p>
 
-      {/* SUBTEXT */}
-      <p
-        className="slide-up delay-2"
-        style={{
-          fontSize: "18px",
-          color: "#cce9df",
-          marginBottom: "40px",
-          textAlign: "center",
-          maxWidth: "800px",
-          lineHeight: "1.6",
-        }}
-      >
-        We import brand-new iPhones, Samsung Galaxy, and Google Pixel devices
-        directly from trusted suppliers — offering transparent MWK pricing,
-        premium product quality, and fast WhatsApp ordering.
-      </p>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          style={actions}
+        >
+          <Link href="/products" style={primaryBtn}>
+            Browse Phones
+          </Link>
 
-      {/* CTA BUTTON */}
-      <a
-        className="fade-in delay-3"
-        href="https://wa.me/265882267019?text=I'm%20interested%20in%20a%20phone"
-        style={{
-          padding: "16px 36px",
-          background: "#1dbf73",
-          color: "#011d14",
-          fontSize: "20px",
-          borderRadius: "40px",
-          fontWeight: "600",
-          textDecoration: "none",
-          boxShadow: "0 0 20px rgba(29, 191, 115, 0.4)",
-          transition: "0.3s ease",
-        }}
-      >
-        Order on WhatsApp
-      </a>
-    </main>
+          <a
+            href="https://wa.me/265882267019"
+            style={secondaryBtn}
+          >
+            Chat on WhatsApp
+          </a>
+        </motion.div>
+      </motion.div>
+
+      {/* Decorative gradient */}
+      <div style={glow} />
+    </div>
   );
 }
 
+/* ---------------- STYLES ---------------- */
+
+const container = {
+  minHeight: "calc(100vh - 80px)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "20px",
+  position: "relative",
+  overflow: "hidden",
+};
+
+const hero = {
+  maxWidth: "900px",
+  textAlign: "center",
+  zIndex: 2,
+};
+
+const title = {
+  fontSize: "clamp(32px, 6vw, 56px)",
+  fontWeight: "800",
+  lineHeight: "1.1",
+  color: "#ffffff",
+};
+
+const subtitle = {
+  marginTop: "18px",
+  fontSize: "clamp(16px, 2.5vw, 20px)",
+  color: "rgba(255,255,255,0.75)",
+  maxWidth: "600px",
+  marginInline: "auto",
+};
+
+const actions = {
+  marginTop: "36px",
+  display: "flex",
+  justifyContent: "center",
+  gap: "16px",
+  flexWrap: "wrap",
+};
+
+const primaryBtn = {
+  background: "#1dbf73",
+  color: "#02130d",
+  padding: "14px 28px",
+  borderRadius: "30px",
+  fontWeight: "600",
+  fontSize: "16px",
+  textDecoration: "none",
+  transition: "transform 0.2s ease, box-shadow 0.2s ease",
+};
+
+const secondaryBtn = {
+  background: "rgba(255,255,255,0.08)",
+  color: "#ffffff",
+  padding: "14px 28px",
+  borderRadius: "30px",
+  fontWeight: "500",
+  fontSize: "16px",
+  textDecoration: "none",
+  border: "1px solid rgba(255,255,255,0.2)",
+};
+
+const glow = {
+  position: "absolute",
+  width: "600px",
+  height: "600px",
+  background:
+    "radial-gradient(circle, rgba(29,191,115,0.25) 0%, rgba(29,191,115,0) 70%)",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  zIndex: 1,
+};
