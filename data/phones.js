@@ -891,7 +891,7 @@ export const phones = [
     colors: ["Black", "Brown"], // placeholder colors
     images: {
       Black: "/images/fold-2/black.png",
-      White: "/images/fold-2/brown.png"
+      Brown: "/images/fold-2/brown.png"
     },
     variants: [
       { storage: "256GB", price: 2300000 }
