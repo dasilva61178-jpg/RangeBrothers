@@ -5,6 +5,10 @@ import { CartProvider } from "./context/cartcontext";
 export const metadata = {
   title: "RangeBrothers",
   description: "Premium Smartphones Delivered Across Malawi",
+
+  verification: {
+    google: "njTTlQcxkG4k0CwdnkMzsz20jZk-bWA0sX6VPVG4jEk",
+  },
 };
 
 export default function RootLayout({ children }) {
@@ -19,3 +23,4 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
+
