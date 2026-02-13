@@ -10,6 +10,7 @@ export const metadata = {
     google: "njTTlQcxkG4k0CwdnkMzsz20jZk-bWA0sX6VPVG4jEk",
   },
 };
+// update
 
 export default function RootLayout({ children }) {
   return (
