@@ -2,22 +2,24 @@ import { NextResponse } from "next/server";
 
 export async function POST(req) {
   try {
-    const { cart, total } = await req.json();
+    const body = await req.json();
+
+    const { amount, name, phone } = body;
 
     const response = await fetch("https://api.paychangu.com/payment", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.PAYCHANGU_SECRET_KEY}`,
         "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.PAYCHANGU_SECRET_KEY}`,
       },
       body: JSON.stringify({
-        amount: total,
+        amount: amount,
         currency: "MWK",
-        email: "customer@email.com",
-        callback_url: "https://rangebrothers.store/api/verify", // later
-        return_url: "https://rangebrothers.store/success", // after payment
-        metadata: {
-          cart: cart,
+        callback_url: "https://rangebrothers.store/track",
+        return_url: "https://rangebrothers.store/track",
+        customer: {
+          name: name,
+          phone: phone,
         },
       }),
     });
@@ -25,8 +27,8 @@ export async function POST(req) {
     const data = await response.json();
 
     return NextResponse.json(data);
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: "Payment failed" }, { status: 500 });
   }
 }
