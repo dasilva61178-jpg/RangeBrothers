@@ -26,6 +26,8 @@ export async function POST(req) {
 
     const data = await response.json();
 
+    console.log("PAYCHANGU RESPONSE:", data);
+
     return NextResponse.json(data);
   } catch (error) {
     console.error(error);
