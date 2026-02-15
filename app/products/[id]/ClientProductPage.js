@@ -1,18 +1,14 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
 import { useCart } from "../../context/cartcontext";
 
-
 export default function ClientProductPage({ product }) {
   const { addToCart } = useCart();
 
-  // Safe defaults
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedVariant, setSelectedVariant] = useState({});
 
-  // Set defaults once product loads
   useEffect(() => {
     if (product) {
       setSelectedColor(product.colors[0]);
@@ -31,7 +27,6 @@ export default function ClientProductPage({ product }) {
         textAlign: "center",
       }}
     >
-      {/* IMAGE */}
       <img
         src={product.images[selectedColor]}
         alt={product.name}
@@ -42,12 +37,8 @@ export default function ClientProductPage({ product }) {
         }}
       />
 
-      {/* NAME */}
-      <h1 style={{ fontSize: "36px", color: "#1dbf73" }}>
-        {product.name}
-      </h1>
+      <h1 style={{ fontSize: "36px", color: "#1dbf73" }}>{product.name}</h1>
 
-      {/* COLORS */}
       <h3 style={{ marginTop: "30px" }}>Choose Color</h3>
       <div
         style={{
@@ -66,9 +57,7 @@ export default function ClientProductPage({ product }) {
               padding: "8px 16px",
               borderRadius: "20px",
               border:
-                selectedColor === color
-                  ? "2px solid #1dbf73"
-                  : "1px solid #555",
+                selectedColor === color ? "2px solid #1dbf73" : "1px solid #555",
               background: "transparent",
               color: "#fff",
               cursor: "pointer",
@@ -79,7 +68,6 @@ export default function ClientProductPage({ product }) {
         ))}
       </div>
 
-      {/* STORAGE */}
       <h3 style={{ marginTop: "30px" }}>Choose Storage</h3>
       <div
         style={{
@@ -111,20 +99,19 @@ export default function ClientProductPage({ product }) {
         ))}
       </div>
 
-      {/* PRICE */}
       <h2 style={{ marginTop: "30px", color: "#1dbf73" }}>
         MWK {selectedVariant.price?.toLocaleString()}
       </h2>
 
-      {/* ADD TO CART */}
       <button
         onClick={() =>
           addToCart({
-           id: product.id,
-           name: product.name,
-           color: selectedColor,
-           storage: selectedVariant.storage,
-           price: selectedVariant.price,
+            id: product.id,
+            name: product.name,
+            color: selectedColor,
+            storage: selectedVariant.storage,
+            price: selectedVariant.price,
+            quantity: 1,
           })
         }
         style={{

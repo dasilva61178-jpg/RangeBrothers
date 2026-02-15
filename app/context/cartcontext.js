@@ -2,62 +2,56 @@
 
 import { createContext, useContext, useState } from "react";
 
-const CartContext = createContext(null);
+const CartContext = createContext();
+
+// ✅ THIS EXPORT MUST EXIST
+export function useCart() {
+  return useContext(CartContext);
+}
 
 export function CartProvider({ children }) {
   const [cart, setCart] = useState([]);
 
-  // ADD ITEM
-  const addToCart = (product) => {
+  const addToCart = (item) => {
     setCart((prev) => {
-      const existing = prev.find(
-        (item) =>
-          item.id === product.id &&
-          item.storage === product.storage &&
-          item.color === product.color
+      const existingIndex = prev.findIndex(
+        (p) =>
+          p.id === item.id &&
+          p.color === item.color &&
+          p.storage === item.storage
       );
 
-      if (existing) {
-        return prev.map((item) =>
-          item === existing
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
+      if (existingIndex !== -1) {
+        const updated = [...prev];
+        updated[existingIndex].quantity += 1;
+        return updated;
       }
 
-      return [...prev, { ...product, quantity: 1 }];
+      return [...prev, { ...item, quantity: 1 }];
     });
   };
 
-  // INCREASE QTY
   const increaseQty = (index) => {
-    setCart((prev) =>
-      prev.map((item, i) =>
-        i === index ? { ...item, quantity: item.quantity + 1 } : item
-      )
-    );
+    const updated = [...cart];
+    updated[index].quantity += 1;
+    setCart(updated);
   };
 
-  // DECREASE QTY
   const decreaseQty = (index) => {
-    setCart((prev) =>
-      prev
-        .map((item, i) =>
-          i === index
-            ? { ...item, quantity: Math.max(1, item.quantity - 1) }
-            : item
-        )
-        .filter((item) => item.quantity > 0)
-    );
+    const updated = [...cart];
+    if (updated[index].quantity > 1) {
+      updated[index].quantity -= 1;
+      setCart(updated);
+    }
   };
 
-  // REMOVE ITEM
   const removeItem = (index) => {
-    setCart((prev) => prev.filter((_, i) => i !== index));
+    setCart(cart.filter((_, i) => i !== index));
   };
 
-  // CLEAR CART
-  const clearCart = () => setCart([]);
+  const clearCart = () => {
+    setCart([]);
+  };
 
   return (
     <CartContext.Provider
@@ -73,8 +67,4 @@ export function CartProvider({ children }) {
       {children}
     </CartContext.Provider>
   );
-}
-
-export function useCart() {
-  return useContext(CartContext);
 }

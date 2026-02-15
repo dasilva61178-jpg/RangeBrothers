@@ -67,7 +67,7 @@ export default function Navbar() {
         )}
       </AnimatePresence>
 
-      {/* MOBILE CART */}
+      {/* MOBILE CART (NO WRAPPER) */}
       <MobileCart open={cartOpen} onClose={() => setCartOpen(false)} />
     </>
   );
