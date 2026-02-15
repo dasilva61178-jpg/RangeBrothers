@@ -4,36 +4,43 @@ export async function POST(req) {
   try {
     const { amount, name, phone } = await req.json();
 
-    const response = await fetch("https://api.paychangu.com/v1/checkout", {
+    console.log("Incoming request:", { amount, name, phone });
+
+    const response = await fetch("https://api.paychangu.com/payment", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.PAYCHANGU_SECRET_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        amount,
+        amount: amount,
         currency: "MWK",
-        description: "Order payment",
+
+        callback_url: "https://rangebrothers.store/track",
         return_url: "https://rangebrothers.store/track",
-        callback_url: "https://rangebrothers.store/api/webhook",
+
         customer: {
-          name,
-          phone,
+          name: name,
+          phone: phone,
         },
       }),
     });
 
     const data = await response.json();
 
-    console.log("PayChangu:", data);
+    console.log("PAYCHANGU RESPONSE:", data);
 
-    return NextResponse.json({
-      checkout_url: data?.data?.checkout_url,
-      raw: data,
-    });
+    // 🔥 IMPORTANT: check both keys
+    if (data?.checkout_url || data?.authorization_url) {
+      return NextResponse.json({
+        checkout_url: data.checkout_url || data.authorization_url,
+      });
+    }
+
+    return NextResponse.json(data, { status: 400 });
 
   } catch (error) {
-    console.error(error);
+    console.error("CHECKOUT ERROR:", error);
     return NextResponse.json({ error: "Payment failed" }, { status: 500 });
   }
 }
