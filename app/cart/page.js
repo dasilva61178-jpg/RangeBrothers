@@ -17,21 +17,19 @@ export default function CartPage() {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // TOTAL
   const total = cart.reduce(
     (sum, item) => sum + Number(item.price) * Number(item.quantity),
     0
   );
 
-  // CHECKOUT
   const handleCheckout = async () => {
     if (!name || !phone) {
       alert("Please enter your name and phone number");
       return;
     }
 
-    if (cart.length === 0) {
-      alert("Cart is empty");
+    if (total <= 0) {
+      alert("Your cart is empty");
       return;
     }
 
@@ -41,7 +39,7 @@ export default function CartPage() {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json", // ✅ IMPORTANT
         },
         body: JSON.stringify({
           amount: total,
@@ -52,16 +50,19 @@ export default function CartPage() {
 
       const data = await res.json();
 
-      // 🔥 IMPORTANT DEBUG
       console.log("PAYMENT RESPONSE:", data);
 
-      if (data?.checkout_url) {
-        window.location.href = data.checkout_url;
+      // ✅ FIXED PATH
+      const checkoutUrl = data?.data?.check_out_url;
+
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
       } else {
-        alert("Payment failed: " + JSON.stringify(data));
+        console.error("Payment error:", data);
+        alert("Unable to start payment. Try again.");
       }
     } catch (err) {
-      console.error(err);
+      console.error("Checkout error:", err);
       alert("Something went wrong");
     }
 
@@ -98,9 +99,13 @@ export default function CartPage() {
 
             <div style={rightSide}>
               <div style={qtyWrapper}>
-                <button onClick={() => decreaseQty(index)} style={qtyBtn}>−</button>
+                <button onClick={() => decreaseQty(index)} style={qtyBtn}>
+                  −
+                </button>
                 <span>{item.quantity}</span>
-                <button onClick={() => increaseQty(index)} style={qtyBtn}>+</button>
+                <button onClick={() => increaseQty(index)} style={qtyBtn}>
+                  +
+                </button>
               </div>
 
               <button onClick={() => removeItem(index)} style={removeBtn}>
@@ -113,17 +118,15 @@ export default function CartPage() {
 
       {cart.length > 0 && (
         <>
-          {/* TOTAL */}
           <div style={totalRow}>
             <strong>Total:</strong>
             <strong>MWK {total.toLocaleString()}</strong>
           </div>
 
-          {/* FORM */}
           <div style={formBox}>
             <input
               type="text"
-              placeholder="Full Name"
+              placeholder="Your Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               style={inputStyle}
@@ -138,7 +141,6 @@ export default function CartPage() {
             />
           </div>
 
-          {/* BUTTONS */}
           <div style={actions}>
             <button onClick={clearCart} style={clearBtn}>
               Clear Cart
@@ -238,7 +240,7 @@ const formBox = {
 
 const inputStyle = {
   padding: "12px",
-  borderRadius: "10px",
+  borderRadius: "8px",
   border: "1px solid rgba(255,255,255,0.2)",
   background: "#02130d",
   color: "white",
