@@ -1,188 +1,246 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../context/cartcontext";
-import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 function generateTrackingCode() {
-  return "RB-" + Math.floor(100000 + Math.random() * 900000);
+  const random = Math.floor(100000 + Math.random() * 900000);
+  return `RB-${random}`;
 }
 
 export default function CartPage() {
-  const { cart, removeFromCart, updateQuantity, clearCart } = useCart();
+  const { cart, increaseQty, decreaseQty, removeItem, clearCart } = useCart();
 
-  const [name, setName] = useState("");
+  const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-  const buildWhatsAppUrl = (trackingCode) => {
-    const message = encodeURIComponent(
-      `📦 New Order\n\n` +
-        `Name: ${name}\n` +
-        `Phone: ${phone}\n\n` +
-        cart
-          .map(
-            (item) =>
-              `${item.name} (${item.storage}, ${item.color}) x${item.quantity} - MWK ${
-                item.price * item.quantity
-              }`
-          )
-          .join("\n") +
-        `\n\nTotal: MWK ${total}\n` +
-        `Tracking Code: ${trackingCode}`
+  const total = useMemo(() => {
+    return cart.reduce(
+      (sum, item) => sum + Number(item.price) * Number(item.quantity || 1),
+      0
     );
+  }, [cart]);
 
-    return `https://wa.me/265882267019?text=${message}`;
-  };
+  const lines = useMemo(() => {
+    return cart.map((item) => {
+      const qty = Number(item.quantity || 1);
+      const lineTotal = Number(item.price) * qty;
+      return `• ${item.name} (${item.storage}, ${item.color}) x${qty} — MWK ${lineTotal.toLocaleString()}`;
+    });
+  }, [cart]);
 
-  const saveOrder = async (trackingCode) => {
+  const handleCheckout = async () => {
+    setErrorMsg("");
+
+    if (cart.length === 0) return;
+
+    if (!customerName.trim()) {
+      setErrorMsg("Please enter your name.");
+      return;
+    }
+    if (!phone.trim()) {
+      setErrorMsg("Please enter your phone number.");
+      return;
+    }
+
+    setIsProcessing(true);
+
     try {
-      await supabase.from("orders").insert([
+      const trackingCode = generateTrackingCode();
+
+      const orderDetailsText =
+        lines.join("\n") +
+        `\n\nTotal: MWK ${total.toLocaleString()}\nTracking: ${trackingCode}`;
+
+      // 1) Save to Supabase
+      const { error } = await supabase.from("orders").insert([
         {
-          customer_name: name,
-          phone,
-          order_details: JSON.stringify(cart),
-          total,
+          customer_name: customerName.trim(),
+          phone: phone.trim(),
+          order_details: orderDetailsText,
           status: "pending",
           tracking_code: trackingCode,
         },
       ]);
+
+      if (error) {
+        console.error(error);
+        setErrorMsg("Checkout failed. Please try again.");
+        setIsProcessing(false);
+        return;
+      }
+
+      // 2) Build WhatsApp message (includes tracking + track link)
+      const trackLink =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/track?code=${trackingCode}`
+          : `https://rangebrothers.store/track?code=${trackingCode}`;
+
+      const whatsappMessage = encodeURIComponent(
+        `🧾 RangeBrothers Order\n\nName: ${customerName.trim()}\nPhone: ${phone.trim()}\n\n${lines.join(
+          "\n"
+        )}\n\nTotal: MWK ${total.toLocaleString()}\nTracking Code: ${trackingCode}\nTrack here: ${trackLink}\n\n✅ Please confirm this order.`
+      );
+
+      // 3) Redirect to WhatsApp
+      window.location.href = `https://wa.me/265882267019?text=${whatsappMessage}`;
     } catch (err) {
-      console.error("Save failed:", err);
-    }
-  };
-
-  const handleCheckout = () => {
-    if (!name.trim() || !phone.trim()) {
-      alert("Enter your name and phone");
+      console.error(err);
+      setErrorMsg("Something went wrong. Please try again.");
+      setIsProcessing(false);
       return;
     }
-    if (cart.length === 0) {
-      alert("Cart is empty");
-      return;
-    }
-
-    const trackingCode = generateTrackingCode();
-
-    // Open WhatsApp immediately (mobile-safe)
-    window.location.href = buildWhatsAppUrl(trackingCode);
-
-    // Save order in background
-    saveOrder(trackingCode);
-
-    // Optional: clear cart after checkout
-    clearCart();
   };
 
   return (
     <div style={page}>
-      <div style={wrap}>
-        <h1 style={title}>Your Cart</h1>
+      <div style={headerRow}>
+        <div>
+          <h1 style={title}>Your Cart</h1>
+          <p style={subtitle}>Review items, set quantity, then checkout on WhatsApp.</p>
+        </div>
 
-        {cart.length === 0 ? (
-          <div style={emptyCard}>
-            <div style={emptyIcon}>🛒</div>
-            <div style={emptyText}>Your cart is empty.</div>
-            <div style={emptySub}>Add a phone to continue.</div>
+        {cart.length > 0 && (
+          <button
+            onClick={clearCart}
+            style={ghostBtn}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0px)")}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      {cart.length === 0 ? (
+        <div style={emptyCard}>
+          <div style={{ fontSize: 40 }}>🛒</div>
+          <div style={{ marginTop: 10, fontWeight: 700 }}>Your cart is empty</div>
+          <div style={{ opacity: 0.7, marginTop: 6 }}>
+            Go to Products and add a phone to get started.
           </div>
-        ) : (
-          <>
-            {/* ITEMS */}
-            <div style={sectionTitle}>Items</div>
+        </div>
+      ) : (
+        <div style={grid}>
+          {/* LEFT: ITEMS */}
+          <div style={leftCol}>
+            <AnimatePresence>
+              {cart.map((item, index) => {
+                const qty = Number(item.quantity || 1);
+                const lineTotal = Number(item.price) * qty;
 
-            <div style={list}>
-              {cart.map((item) => (
-                <div key={item.id + item.color + item.storage} style={itemCard}>
-                  <div style={itemTop}>
-                    <div style={itemName}>{item.name}</div>
-                    <div style={itemPrice}>
-                      MWK {(item.price * item.quantity).toLocaleString()}
-                    </div>
-                  </div>
-
-                  <div style={itemMeta}>
-                    <span style={pill}>{item.storage}</span>
-                    <span style={pill}>{item.color}</span>
-                  </div>
-
-                  <div style={itemBottom}>
-                    <div style={qtyGroup}>
-                      <button
-                        style={qtyBtn}
-                        onClick={() =>
-                          updateQuantity(item.id, Math.max(1, item.quantity - 1))
-                        }
-                        aria-label="Decrease quantity"
-                      >
-                        −
-                      </button>
-
-                      <div style={qtyValue}>{item.quantity}</div>
-
-                      <button
-                        style={qtyBtn}
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        aria-label="Increase quantity"
-                      >
-                        +
-                      </button>
+                return (
+                  <motion.div
+                    key={`${item.id}-${item.storage}-${item.color}-${index}`}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    transition={{ duration: 0.2 }}
+                    style={itemCard}
+                  >
+                    <div style={itemMain}>
+                      <div style={itemTitle}>{item.name}</div>
+                      <div style={itemMeta}>
+                        {item.storage} <span style={{ opacity: 0.5 }}>•</span> {item.color}
+                      </div>
                     </div>
 
-                    <button
-                      style={removeBtn}
-                      onClick={() => removeFromCart(item.id)}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                    <div style={itemRight}>
+                      <div style={money}>
+                        MWK {lineTotal.toLocaleString()}
+                      </div>
 
-            {/* SUMMARY */}
+                      <div style={controlsRow}>
+                        <button
+                          onClick={() => decreaseQty(index)}
+                          style={stepBtn}
+                          aria-label="Decrease quantity"
+                        >
+                          −
+                        </button>
+
+                        <div style={qtyPill}>{qty}</div>
+
+                        <button
+                          onClick={() => increaseQty(index)}
+                          style={stepBtn}
+                          aria-label="Increase quantity"
+                        >
+                          +
+                        </button>
+
+                        <button
+                          onClick={() => removeItem(index)}
+                          style={removeBtn}
+                          aria-label="Remove item"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+
+          {/* RIGHT: SUMMARY */}
+          <div style={rightCol}>
             <div style={summaryCard}>
-              <div style={summaryRow}>
-                <span style={summaryLabel}>Total</span>
-                <span style={summaryValue}>MWK {total.toLocaleString()}</span>
+              <div style={summaryTop}>
+                <div style={{ fontWeight: 800, fontSize: 16 }}>Order Summary</div>
+                <div style={{ opacity: 0.7, fontSize: 13 }}>
+                  {cart.length} item{cart.length === 1 ? "" : "s"}
+                </div>
               </div>
-              <div style={summarySub}>
-                Delivery + payment details will be confirmed on WhatsApp.
-              </div>
-            </div>
 
-            {/* CUSTOMER INFO */}
-            <div style={sectionTitle}>Customer Info</div>
+              <div style={divider} />
 
-            <div style={formCard}>
-              <label style={label}>Full Name</label>
+              <label style={label}>Name</label>
               <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. John Banda"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="e.g., John Banda"
                 style={input}
               />
 
-              <label style={label}>Phone Number</label>
+              <label style={label}>Phone</label>
               <input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="e.g. 0882 267 019"
+                placeholder="e.g., 0882xxxxxx"
                 style={input}
                 inputMode="tel"
               />
 
-              <button style={checkoutBtn} onClick={handleCheckout}>
-                Checkout on WhatsApp
+              {errorMsg && <div style={errorBox}>{errorMsg}</div>}
+
+              <div style={totalRow}>
+                <div style={{ opacity: 0.8 }}>Total</div>
+                <div style={{ fontWeight: 900, fontSize: 18 }}>
+                  MWK {total.toLocaleString()}
+                </div>
+              </div>
+
+              <button
+                onClick={handleCheckout}
+                style={checkoutBtn}
+                disabled={isProcessing}
+              >
+                {isProcessing ? "Processing..." : "Checkout on WhatsApp"}
               </button>
 
-              <button style={clearBtn} onClick={clearCart}>
-                Clear Cart
-              </button>
+              <div style={finePrint}>
+                By checking out, your order is saved and you’ll be redirected to WhatsApp to confirm.
+              </div>
             </div>
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -190,236 +248,226 @@ export default function CartPage() {
 /* ---------------- STYLES ---------------- */
 
 const page = {
-  minHeight: "100vh",
-  background: "radial-gradient(1200px 600px at 20% -10%, rgba(29,191,115,0.18), transparent 60%), #070b09",
+  maxWidth: 1100,
+  margin: "40px auto",
+  padding: "0 16px 60px",
   color: "white",
-  padding: "22px 14px 40px",
 };
 
-const wrap = {
-  maxWidth: "560px",
-  margin: "0 auto",
+const headerRow = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: 16,
+  marginBottom: 20,
 };
 
 const title = {
-  fontSize: "34px",
-  fontWeight: "800",
-  letterSpacing: "-0.5px",
-  margin: "6px 0 18px",
+  fontSize: 34,
   color: "#1dbf73",
+  margin: 0,
+  lineHeight: 1.1,
+  fontWeight: 900,
 };
 
-const sectionTitle = {
-  marginTop: "18px",
-  marginBottom: "10px",
-  fontSize: "13px",
-  letterSpacing: "0.12em",
-  textTransform: "uppercase",
-  color: "rgba(255,255,255,0.6)",
+const subtitle = {
+  marginTop: 8,
+  marginBottom: 0,
+  opacity: 0.7,
 };
 
-const list = {
+const grid = {
   display: "grid",
-  gap: "12px",
+  gridTemplateColumns: "1fr 360px",
+  gap: 18,
 };
+
+const leftCol = {};
+
+const rightCol = {};
 
 const itemCard = {
-  background: "rgba(255,255,255,0.05)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  borderRadius: "16px",
-  padding: "14px",
-  backdropFilter: "blur(6px)",
-};
-
-const itemTop = {
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(255,255,255,0.08)",
+  borderRadius: 16,
+  padding: 16,
   display: "flex",
   justifyContent: "space-between",
-  gap: "10px",
-  alignItems: "flex-start",
+  alignItems: "center",
+  gap: 14,
+  marginBottom: 12,
 };
 
-const itemName = {
-  fontSize: "18px",
-  fontWeight: "700",
-  lineHeight: "1.15",
+const itemMain = {
+  minWidth: 0,
 };
 
-const itemPrice = {
-  fontSize: "14px",
-  fontWeight: "700",
-  color: "#1dbf73",
+const itemTitle = {
+  fontWeight: 800,
+  fontSize: 16,
   whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  maxWidth: 520,
 };
 
 const itemMeta = {
+  marginTop: 6,
+  opacity: 0.7,
+  fontSize: 13,
+};
+
+const itemRight = {
   display: "flex",
-  gap: "8px",
-  flexWrap: "wrap",
-  marginTop: "10px",
+  flexDirection: "column",
+  alignItems: "flex-end",
+  gap: 10,
 };
 
-const pill = {
-  fontSize: "12px",
-  padding: "6px 10px",
-  borderRadius: "999px",
-  background: "rgba(255,255,255,0.06)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  color: "rgba(255,255,255,0.85)",
-};
-
-const itemBottom = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "12px",
-  marginTop: "12px",
-};
-
-const qtyGroup = {
-  display: "flex",
-  alignItems: "center",
-  gap: "10px",
-  background: "rgba(0,0,0,0.25)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  borderRadius: "999px",
-  padding: "6px 10px",
-};
-
-const qtyBtn = {
-  width: "34px",
-  height: "34px",
-  borderRadius: "999px",
-  border: "1px solid rgba(29,191,115,0.55)",
-  background: "rgba(29,191,115,0.10)",
+const money = {
   color: "#1dbf73",
-  fontSize: "18px",
-  fontWeight: "800",
-  cursor: "pointer",
+  fontWeight: 900,
 };
 
-const qtyValue = {
-  minWidth: "22px",
-  textAlign: "center",
-  fontWeight: "800",
-  color: "rgba(255,255,255,0.92)",
+const controlsRow = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  flexWrap: "wrap",
+  justifyContent: "flex-end",
+};
+
+const stepBtn = {
+  width: 36,
+  height: 36,
+  borderRadius: 999,
+  border: "1px solid rgba(29,191,115,0.7)",
+  background: "rgba(29,191,115,0.08)",
+  color: "#1dbf73",
+  fontSize: 18,
+  cursor: "pointer",
+  fontWeight: 900,
+};
+
+const qtyPill = {
+  minWidth: 44,
+  height: 36,
+  borderRadius: 999,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(0,0,0,0.25)",
+  fontWeight: 800,
 };
 
 const removeBtn = {
-  background: "rgba(255, 80, 80, 0.12)",
-  border: "1px solid rgba(255, 80, 80, 0.35)",
-  color: "#ff8080",
-  padding: "10px 12px",
-  borderRadius: "12px",
+  padding: "9px 12px",
+  borderRadius: 999,
+  border: "1px solid rgba(255,107,107,0.35)",
+  background: "rgba(255,107,107,0.12)",
+  color: "#ff6b6b",
   cursor: "pointer",
-  fontWeight: "700",
-  fontSize: "13px",
+  fontWeight: 800,
 };
 
 const summaryCard = {
-  marginTop: "14px",
+  position: "sticky",
+  top: 90,
   background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  borderRadius: "16px",
-  padding: "14px",
+  border: "1px solid rgba(255,255,255,0.08)",
+  borderRadius: 18,
+  padding: 16,
 };
 
-const summaryRow = {
+const summaryTop = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "baseline",
 };
 
-const summaryLabel = {
-  fontSize: "14px",
-  color: "rgba(255,255,255,0.72)",
-  fontWeight: "700",
-};
-
-const summaryValue = {
-  fontSize: "20px",
-  fontWeight: "900",
-  color: "#1dbf73",
-};
-
-const summarySub = {
-  marginTop: "8px",
-  fontSize: "13px",
-  color: "rgba(255,255,255,0.55)",
-  lineHeight: "1.35",
-};
-
-const formCard = {
-  background: "rgba(255,255,255,0.05)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  borderRadius: "16px",
-  padding: "14px",
-  display: "grid",
-  gap: "10px",
+const divider = {
+  height: 1,
+  background: "rgba(255,255,255,0.10)",
+  margin: "14px 0",
 };
 
 const label = {
-  fontSize: "12px",
-  color: "rgba(255,255,255,0.7)",
-  fontWeight: "700",
-  marginTop: "2px",
+  display: "block",
+  fontSize: 13,
+  opacity: 0.75,
+  marginBottom: 6,
+  marginTop: 10,
 };
 
 const input = {
   width: "100%",
   padding: "12px 12px",
-  borderRadius: "12px",
-  border: "1px solid rgba(255,255,255,0.14)",
-  background: "rgba(0,0,0,0.25)",
+  borderRadius: 12,
+  border: "1px solid rgba(29,191,115,0.35)",
+  background: "#02130d",
   color: "white",
   outline: "none",
-  fontSize: "15px",
+  fontSize: 15,
+};
+
+const errorBox = {
+  marginTop: 12,
+  padding: "10px 12px",
+  borderRadius: 12,
+  border: "1px solid rgba(255,107,107,0.35)",
+  background: "rgba(255,107,107,0.10)",
+  color: "#ffb3b3",
+  fontWeight: 700,
+};
+
+const totalRow = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginTop: 14,
+  paddingTop: 12,
+  borderTop: "1px solid rgba(255,255,255,0.10)",
 };
 
 const checkoutBtn = {
-  marginTop: "6px",
   width: "100%",
-  padding: "14px 14px",
-  borderRadius: "14px",
+  marginTop: 14,
+  padding: "14px 16px",
+  borderRadius: 14,
   border: "none",
-  cursor: "pointer",
-  fontWeight: "900",
-  fontSize: "16px",
   background: "#1dbf73",
-  color: "#04140c",
-};
-
-const clearBtn = {
-  width: "100%",
-  padding: "12px 14px",
-  borderRadius: "14px",
-  background: "rgba(255,255,255,0.06)",
-  border: "1px solid rgba(255,255,255,0.14)",
-  color: "rgba(255,255,255,0.86)",
+  color: "#02130d",
   cursor: "pointer",
-  fontWeight: "800",
+  fontWeight: 900,
+  fontSize: 16,
 };
 
-const emptyCard = {
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  borderRadius: "16px",
-  padding: "22px",
-  textAlign: "center",
-  marginTop: "12px",
+const finePrint = {
+  marginTop: 10,
+  fontSize: 12,
+  opacity: 0.65,
+  lineHeight: 1.35,
 };
 
-const emptyIcon = {
-  fontSize: "32px",
-  marginBottom: "8px",
+const ghostBtn = {
+  padding: "10px 14px",
+  borderRadius: 999,
+  border: "1px solid rgba(255,255,255,0.16)",
+  background: "rgba(255,255,255,0.06)",
+  color: "white",
+  cursor: "pointer",
+  fontWeight: 800,
+  transition: "0.15s ease",
 };
 
-const emptyText = {
-  fontSize: "16px",
-  fontWeight: "800",
-};
-
-const emptySub = {
-  marginTop: "6px",
-  fontSize: "13px",
-  color: "rgba(255,255,255,0.6)",
-};
+/* MOBILE: stack summary under items */
+if (typeof window !== "undefined") {
+  const style = document.createElement("style");
+  style.innerHTML = `
+    @media (max-width: 900px) {
+      .rb-cart-grid { grid-template-columns: 1fr !important; }
+    }
+  `;
+  document.head.appendChild(style);
+}
