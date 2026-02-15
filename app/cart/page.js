@@ -53,7 +53,7 @@ export default function CartPage() {
       console.log("PAYMENT RESPONSE:", data);
 
       // ✅ FIXED PATH
-      const checkoutUrl = data?.data?.check_out_url;
+      const checkoutUrl = data?.checkout_url;
 
       if (checkoutUrl) {
         window.location.href = checkoutUrl;
