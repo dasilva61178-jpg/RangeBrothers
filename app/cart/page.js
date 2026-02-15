@@ -1,245 +1,146 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../context/cartcontext";
-import { supabase } from "@/lib/supabaseClient";
-
-function generateTrackingCode() {
-  const random = Math.floor(100000 + Math.random() * 900000);
-  return `RB-${random}`;
-}
+import { useState } from "react";
 
 export default function CartPage() {
   const { cart, increaseQty, decreaseQty, removeItem, clearCart } = useCart();
 
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [processing, setProcessing] = useState(false);
 
-  const total = useMemo(() => {
-    return cart.reduce(
-      (sum, item) => sum + Number(item.price) * Number(item.quantity || 1),
-      0
+  const total = cart.reduce(
+    (sum, item) => sum + Number(item.price) * Number(item.quantity),
+    0
+  );
+
+  const buildWhatsappMessage = () => {
+    const itemsText = cart
+      .map(
+        (item) =>
+          `${item.name} (${item.storage}, ${item.color}) x${item.quantity} - MWK ${(
+            item.price * item.quantity
+          ).toLocaleString()}`
+      )
+      .join("\n");
+
+    return encodeURIComponent(
+      `New Order ✅\n\nName: ${customerName}\nPhone: ${phone}\n\n${itemsText}\n\nTotal: MWK ${total.toLocaleString()}`
     );
-  }, [cart]);
+  };
 
-  const lines = useMemo(() => {
-    return cart.map((item) => {
-      const qty = Number(item.quantity || 1);
-      const lineTotal = Number(item.price) * qty;
-      return `• ${item.name} (${item.storage}, ${item.color}) x${qty} — MWK ${lineTotal.toLocaleString()}`;
-    });
-  }, [cart]);
-
-  const handleCheckout = async () => {
-    setErrorMsg("");
-
+  const handleCheckout = () => {
     if (cart.length === 0) return;
 
-    if (!customerName.trim()) {
-      setErrorMsg("Please enter your name.");
-      return;
-    }
-    if (!phone.trim()) {
-      setErrorMsg("Please enter your phone number.");
+    if (!customerName.trim() || !phone.trim()) {
+      alert("Please enter your name and phone number.");
       return;
     }
 
-    setIsProcessing(true);
+    setProcessing(true);
 
-    try {
-      const trackingCode = generateTrackingCode();
+    const whatsappMessage = buildWhatsappMessage();
+    const url = `https://wa.me/265882267019?text=${whatsappMessage}`;
 
-      const orderDetailsText =
-        lines.join("\n") +
-        `\n\nTotal: MWK ${total.toLocaleString()}\nTracking: ${trackingCode}`;
+    // open WhatsApp
+    window.location.href = url;
 
-      // 1) Save to Supabase
-      const { error } = await supabase.from("orders").insert([
-        {
-          customer_name: customerName.trim(),
-          phone: phone.trim(),
-          order_details: orderDetailsText,
-          status: "pending",
-          tracking_code: trackingCode,
-        },
-      ]);
-
-      if (error) {
-        console.error(error);
-        setErrorMsg("Checkout failed. Please try again.");
-        setIsProcessing(false);
-        return;
-      }
-
-      // 2) Build WhatsApp message (includes tracking + track link)
-      const trackLink =
-        typeof window !== "undefined"
-          ? `${window.location.origin}/track?code=${trackingCode}`
-          : `https://rangebrothers.store/track?code=${trackingCode}`;
-
-      const whatsappMessage = encodeURIComponent(
-        `🧾 RangeBrothers Order\n\nName: ${customerName.trim()}\nPhone: ${phone.trim()}\n\n${lines.join(
-          "\n"
-        )}\n\nTotal: MWK ${total.toLocaleString()}\nTracking Code: ${trackingCode}\nTrack here: ${trackLink}\n\n✅ Please confirm this order.`
-      );
-
-      // 3) Redirect to WhatsApp
-      window.location.href = `https://wa.me/265882267019?text=${whatsappMessage}`;
-    } catch (err) {
-      console.error(err);
-      setErrorMsg("Something went wrong. Please try again.");
-      setIsProcessing(false);
-      return;
-    }
+    // optional: stop button from staying stuck on "processing"
+    setTimeout(() => setProcessing(false), 2000);
   };
 
   return (
-    <div style={page}>
-      <div style={headerRow}>
-        <div>
-          <h1 style={title}>Your Cart</h1>
-          <p style={subtitle}>Review items, set quantity, then checkout on WhatsApp.</p>
-        </div>
+    <div style={containerStyle}>
+      <h1 style={titleStyle}>Your Cart</h1>
 
-        {cart.length > 0 && (
-          <button
-            onClick={clearCart}
-            style={ghostBtn}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0px)")}
+      {cart.length === 0 && (
+        <p style={{ opacity: 0.6 }}>Your cart is empty.</p>
+      )}
+
+      <AnimatePresence>
+        {cart.map((item, index) => (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.25 }}
+            style={itemStyle}
           >
-            Clear
-          </button>
-        )}
-      </div>
-
-      {cart.length === 0 ? (
-        <div style={emptyCard}>
-          <div style={{ fontSize: 40 }}>🛒</div>
-          <div style={{ marginTop: 10, fontWeight: 700 }}>Your cart is empty</div>
-          <div style={{ opacity: 0.7, marginTop: 6 }}>
-            Go to Products and add a phone to get started.
-          </div>
-        </div>
-      ) : (
-        <div style={grid}>
-          {/* LEFT: ITEMS */}
-          <div style={leftCol}>
-            <AnimatePresence>
-              {cart.map((item, index) => {
-                const qty = Number(item.quantity || 1);
-                const lineTotal = Number(item.price) * qty;
-
-                return (
-                  <motion.div
-                    key={`${item.id}-${item.storage}-${item.color}-${index}`}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -12 }}
-                    transition={{ duration: 0.2 }}
-                    style={itemCard}
-                  >
-                    <div style={itemMain}>
-                      <div style={itemTitle}>{item.name}</div>
-                      <div style={itemMeta}>
-                        {item.storage} <span style={{ opacity: 0.5 }}>•</span> {item.color}
-                      </div>
-                    </div>
-
-                    <div style={itemRight}>
-                      <div style={money}>
-                        MWK {lineTotal.toLocaleString()}
-                      </div>
-
-                      <div style={controlsRow}>
-                        <button
-                          onClick={() => decreaseQty(index)}
-                          style={stepBtn}
-                          aria-label="Decrease quantity"
-                        >
-                          −
-                        </button>
-
-                        <div style={qtyPill}>{qty}</div>
-
-                        <button
-                          onClick={() => increaseQty(index)}
-                          style={stepBtn}
-                          aria-label="Increase quantity"
-                        >
-                          +
-                        </button>
-
-                        <button
-                          onClick={() => removeItem(index)}
-                          style={removeBtn}
-                          aria-label="Remove item"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
-
-          {/* RIGHT: SUMMARY */}
-          <div style={rightCol}>
-            <div style={summaryCard}>
-              <div style={summaryTop}>
-                <div style={{ fontWeight: 800, fontSize: 16 }}>Order Summary</div>
-                <div style={{ opacity: 0.7, fontSize: 13 }}>
-                  {cart.length} item{cart.length === 1 ? "" : "s"}
-                </div>
-              </div>
-
-              <div style={divider} />
-
-              <label style={label}>Name</label>
-              <input
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="e.g., John Banda"
-                style={input}
-              />
-
-              <label style={label}>Phone</label>
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="e.g., 0882xxxxxx"
-                style={input}
-                inputMode="tel"
-              />
-
-              {errorMsg && <div style={errorBox}>{errorMsg}</div>}
-
-              <div style={totalRow}>
-                <div style={{ opacity: 0.8 }}>Total</div>
-                <div style={{ fontWeight: 900, fontSize: 18 }}>
-                  MWK {total.toLocaleString()}
-                </div>
-              </div>
-
-              <button
-                onClick={handleCheckout}
-                style={checkoutBtn}
-                disabled={isProcessing}
-              >
-                {isProcessing ? "Processing..." : "Checkout on WhatsApp"}
-              </button>
-
-              <div style={finePrint}>
-                By checking out, your order is saved and you’ll be redirected to WhatsApp to confirm.
-              </div>
+            <div>
+              <h3 style={{ margin: 0 }}>{item.name}</h3>
+              <p style={subText}>
+                {item.storage} • {item.color}
+              </p>
+              <p style={priceText}>
+                MWK {(item.price * item.quantity).toLocaleString()}
+              </p>
             </div>
+
+            <div style={rightSide}>
+              <div style={qtyWrapper}>
+                <button onClick={() => decreaseQty(index)} style={qtyBtn}>
+                  −
+                </button>
+                <span>{item.quantity}</span>
+                <button onClick={() => increaseQty(index)} style={qtyBtn}>
+                  +
+                </button>
+              </div>
+
+              <button onClick={() => removeItem(index)} style={removeBtn}>
+                Remove
+              </button>
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
+      {cart.length > 0 && (
+        <>
+          <div style={totalRow}>
+            <strong>Total:</strong>
+            <strong>MWK {total.toLocaleString()}</strong>
           </div>
-        </div>
+
+          {/* CUSTOMER INFO */}
+          <div style={formWrap}>
+            <input
+              placeholder="Your Name"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              style={input}
+            />
+            <input
+              placeholder="Phone Number"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              style={input}
+            />
+          </div>
+
+          <div style={actions}>
+            <button
+              onClick={() => clearCart()} // ✅ FIXED (NO emptyCart)
+              style={clearBtn}
+            >
+              Clear Cart
+            </button>
+
+            <button
+              onClick={handleCheckout}
+              style={{
+                ...checkoutBtn,
+                opacity: processing ? 0.7 : 1,
+                pointerEvents: processing ? "none" : "auto",
+              }}
+            >
+              {processing ? "Processing..." : "Checkout on WhatsApp"}
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
@@ -247,227 +148,119 @@ export default function CartPage() {
 
 /* ---------------- STYLES ---------------- */
 
-const page = {
-  maxWidth: 1100,
-  margin: "40px auto",
-  padding: "0 16px 60px",
-  color: "white",
+const containerStyle = {
+  maxWidth: "900px",
+  margin: "60px auto",
+  padding: "20px",
 };
 
-const headerRow = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 16,
-  marginBottom: 20,
-};
-
-const title = {
-  fontSize: 34,
+const titleStyle = {
+  fontSize: "36px",
   color: "#1dbf73",
-  margin: 0,
-  lineHeight: 1.1,
-  fontWeight: 900,
+  marginBottom: "30px",
 };
 
-const subtitle = {
-  marginTop: 8,
-  marginBottom: 0,
-  opacity: 0.7,
-};
-
-const grid = {
-  display: "grid",
-  gridTemplateColumns: "1fr 360px",
-  gap: 18,
-};
-
-const leftCol = {};
-
-const rightCol = {};
-
-const itemCard = {
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.08)",
-  borderRadius: 16,
-  padding: 16,
+const itemStyle = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  gap: 14,
-  marginBottom: 12,
+  background: "rgba(255,255,255,0.05)",
+  padding: "16px 20px",
+  borderRadius: "16px",
+  marginBottom: "14px",
 };
 
-const itemMain = {
-  minWidth: 0,
-};
-
-const itemTitle = {
-  fontWeight: 800,
-  fontSize: 16,
-  whiteSpace: "nowrap",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  maxWidth: 520,
-};
-
-const itemMeta = {
-  marginTop: 6,
-  opacity: 0.7,
-  fontSize: 13,
-};
-
-const itemRight = {
+const rightSide = {
   display: "flex",
   flexDirection: "column",
   alignItems: "flex-end",
-  gap: 10,
+  gap: "10px",
 };
 
-const money = {
-  color: "#1dbf73",
-  fontWeight: 900,
-};
-
-const controlsRow = {
+const qtyWrapper = {
   display: "flex",
   alignItems: "center",
-  gap: 10,
-  flexWrap: "wrap",
-  justifyContent: "flex-end",
+  gap: "10px",
 };
 
-const stepBtn = {
-  width: 36,
-  height: 36,
-  borderRadius: 999,
-  border: "1px solid rgba(29,191,115,0.7)",
-  background: "rgba(29,191,115,0.08)",
+const qtyBtn = {
+  width: "34px",
+  height: "34px",
+  borderRadius: "50%",
+  border: "1px solid #1dbf73",
+  background: "transparent",
   color: "#1dbf73",
-  fontSize: 18,
+  fontSize: "18px",
   cursor: "pointer",
-  fontWeight: 900,
-};
-
-const qtyPill = {
-  minWidth: 44,
-  height: 36,
-  borderRadius: 999,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  border: "1px solid rgba(255,255,255,0.12)",
-  background: "rgba(0,0,0,0.25)",
-  fontWeight: 800,
 };
 
 const removeBtn = {
-  padding: "9px 12px",
-  borderRadius: 999,
-  border: "1px solid rgba(255,107,107,0.35)",
-  background: "rgba(255,107,107,0.12)",
+  background: "rgba(255,107,107,0.15)",
   color: "#ff6b6b",
+  border: "1px solid rgba(255,107,107,0.4)",
+  padding: "6px 14px",
+  borderRadius: "20px",
   cursor: "pointer",
-  fontWeight: 800,
+  fontSize: "14px",
 };
 
-const summaryCard = {
-  position: "sticky",
-  top: 90,
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.08)",
-  borderRadius: 18,
-  padding: 16,
+const priceText = {
+  color: "#1dbf73",
+  marginTop: "4px",
 };
 
-const summaryTop = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "baseline",
-};
-
-const divider = {
-  height: 1,
-  background: "rgba(255,255,255,0.10)",
-  margin: "14px 0",
-};
-
-const label = {
-  display: "block",
-  fontSize: 13,
-  opacity: 0.75,
-  marginBottom: 6,
-  marginTop: 10,
-};
-
-const input = {
-  width: "100%",
-  padding: "12px 12px",
-  borderRadius: 12,
-  border: "1px solid rgba(29,191,115,0.35)",
-  background: "#02130d",
-  color: "white",
-  outline: "none",
-  fontSize: 15,
-};
-
-const errorBox = {
-  marginTop: 12,
-  padding: "10px 12px",
-  borderRadius: 12,
-  border: "1px solid rgba(255,107,107,0.35)",
-  background: "rgba(255,107,107,0.10)",
-  color: "#ffb3b3",
-  fontWeight: 700,
+const subText = {
+  opacity: 0.6,
+  fontSize: "14px",
 };
 
 const totalRow = {
   display: "flex",
   justifyContent: "space-between",
+  marginTop: "30px",
+  fontSize: "20px",
+};
+
+const formWrap = {
+  marginTop: "22px",
+  display: "grid",
+  gap: "12px",
+  maxWidth: "420px",
+};
+
+const input = {
+  padding: "14px 14px",
+  borderRadius: "12px",
+  border: "1px solid rgba(255,255,255,0.18)",
+  background: "rgba(255,255,255,0.06)",
+  color: "white",
+  outline: "none",
+};
+
+const actions = {
+  display: "flex",
+  justifyContent: "space-between",
   alignItems: "center",
-  marginTop: 14,
-  paddingTop: 12,
-  borderTop: "1px solid rgba(255,255,255,0.10)",
+  marginTop: "24px",
+  flexWrap: "wrap",
+  gap: "14px",
+};
+
+const clearBtn = {
+  background: "rgba(255,255,255,0.08)",
+  color: "#fff",
+  padding: "12px 20px",
+  borderRadius: "30px",
+  border: "1px solid rgba(255,255,255,0.2)",
+  cursor: "pointer",
 };
 
 const checkoutBtn = {
-  width: "100%",
-  marginTop: 14,
-  padding: "14px 16px",
-  borderRadius: 14,
-  border: "none",
   background: "#1dbf73",
   color: "#02130d",
+  padding: "14px 26px",
+  borderRadius: "30px",
+  fontWeight: "700",
+  border: "none",
   cursor: "pointer",
-  fontWeight: 900,
-  fontSize: 16,
 };
-
-const finePrint = {
-  marginTop: 10,
-  fontSize: 12,
-  opacity: 0.65,
-  lineHeight: 1.35,
-};
-
-const ghostBtn = {
-  padding: "10px 14px",
-  borderRadius: 999,
-  border: "1px solid rgba(255,255,255,0.16)",
-  background: "rgba(255,255,255,0.06)",
-  color: "white",
-  cursor: "pointer",
-  fontWeight: 800,
-  transition: "0.15s ease",
-};
-
-/* MOBILE: stack summary under items */
-if (typeof window !== "undefined") {
-  const style = document.createElement("style");
-  style.innerHTML = `
-    @media (max-width: 900px) {
-      .rb-cart-grid { grid-template-columns: 1fr !important; }
-    }
-  `;
-  document.head.appendChild(style);
-}
