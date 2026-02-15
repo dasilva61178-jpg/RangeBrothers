@@ -1,23 +1,37 @@
 "use client";
 
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../context/cartcontext";
 
 export default function CartPage() {
-  const { cart, increaseQty, decreaseQty, removeItem, clearCart } = useCart();
+  const {
+    cart,
+    increaseQty,
+    decreaseQty,
+    removeItem,
+    clearCart,
+  } = useCart();
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // TOTAL
   const total = cart.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+    (sum, item) => sum + Number(item.price) * Number(item.quantity),
     0
   );
 
+  // CHECKOUT
   const handleCheckout = async () => {
     if (!name || !phone) {
-      alert("Enter your name and phone");
+      alert("Please enter your name and phone number");
+      return;
+    }
+
+    if (cart.length === 0) {
+      alert("Cart is empty");
       return;
     }
 
@@ -38,85 +52,99 @@ export default function CartPage() {
 
       const data = await res.json();
 
-      if (data.checkout_url) {
+      // 🔥 IMPORTANT DEBUG
+      console.log("PAYMENT RESPONSE:", data);
+
+      if (data?.checkout_url) {
         window.location.href = data.checkout_url;
       } else {
-        alert("Payment failed");
+        alert("Payment failed: " + JSON.stringify(data));
       }
     } catch (err) {
       console.error(err);
-      alert("Error");
+      alert("Something went wrong");
     }
 
     setLoading(false);
   };
 
   return (
-    <div style={container}>
-      <h1 style={title}>Your Cart</h1>
+    <div style={containerStyle}>
+      <h1 style={titleStyle}>Your Cart</h1>
 
       {cart.length === 0 && (
-        <p style={{ opacity: 0.6 }}>Your cart is empty</p>
+        <p style={{ opacity: 0.6 }}>Your cart is empty.</p>
       )}
 
-      {cart.map((item, index) => (
-        <div key={index} style={card}>
-          <div>
-            <h3>{item.name}</h3>
-            <p style={sub}>
-              {item.storage} • {item.color}
-            </p>
-            <p style={price}>
-              MWK {(item.price * item.quantity).toLocaleString()}
-            </p>
-          </div>
-
-          <div style={right}>
-            <div style={qty}>
-              <button onClick={() => decreaseQty(index)} style={btn}>
-                -
-              </button>
-              <span>{item.quantity}</span>
-              <button onClick={() => increaseQty(index)} style={btn}>
-                +
-              </button>
+      <AnimatePresence>
+        {cart.map((item, index) => (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.25 }}
+            style={itemStyle}
+          >
+            <div>
+              <h3 style={{ margin: 0 }}>{item.name}</h3>
+              <p style={subText}>
+                {item.storage} • {item.color}
+              </p>
+              <p style={priceText}>
+                MWK {(item.price * item.quantity).toLocaleString()}
+              </p>
             </div>
 
-            <button onClick={() => removeItem(index)} style={remove}>
-              Remove
-            </button>
-          </div>
-        </div>
-      ))}
+            <div style={rightSide}>
+              <div style={qtyWrapper}>
+                <button onClick={() => decreaseQty(index)} style={qtyBtn}>−</button>
+                <span>{item.quantity}</span>
+                <button onClick={() => increaseQty(index)} style={qtyBtn}>+</button>
+              </div>
+
+              <button onClick={() => removeItem(index)} style={removeBtn}>
+                Remove
+              </button>
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
 
       {cart.length > 0 && (
         <>
-          <div style={totalBox}>
-            Total: MWK {total.toLocaleString()}
+          {/* TOTAL */}
+          <div style={totalRow}>
+            <strong>Total:</strong>
+            <strong>MWK {total.toLocaleString()}</strong>
           </div>
 
-          <div style={form}>
+          {/* FORM */}
+          <div style={formBox}>
             <input
-              placeholder="Your Name"
+              type="text"
+              placeholder="Full Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              style={input}
+              style={inputStyle}
             />
 
             <input
+              type="text"
               placeholder="Phone Number"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              style={input}
+              style={inputStyle}
             />
           </div>
 
+          {/* BUTTONS */}
           <div style={actions}>
-            <button onClick={clearCart} style={clear}>
+            <button onClick={clearCart} style={clearBtn}>
               Clear Cart
             </button>
 
-            <button onClick={handleCheckout} style={checkout}>
+            <button onClick={handleCheckout} style={checkoutBtn}>
               {loading ? "Processing..." : "Pay Now"}
             </button>
           </div>
@@ -126,116 +154,120 @@ export default function CartPage() {
   );
 }
 
-/* -------- STYLES -------- */
+/* ---------- STYLES ---------- */
 
-const container = {
-  maxWidth: "700px",
-  margin: "50px auto",
+const containerStyle = {
+  maxWidth: "900px",
+  margin: "60px auto",
   padding: "20px",
-  color: "white",
 };
 
-const title = {
-  fontSize: "34px",
+const titleStyle = {
+  fontSize: "36px",
   color: "#1dbf73",
-  marginBottom: "25px",
+  marginBottom: "30px",
 };
 
-const card = {
+const itemStyle = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  background: "#031b14",
-  padding: "18px",
-  borderRadius: "14px",
-  marginBottom: "12px",
-  border: "1px solid rgba(255,255,255,0.05)",
+  background: "rgba(255,255,255,0.05)",
+  padding: "16px 20px",
+  borderRadius: "16px",
+  marginBottom: "14px",
 };
 
-const sub = {
-  opacity: 0.6,
-  fontSize: "14px",
-};
-
-const price = {
-  color: "#1dbf73",
-  fontWeight: "600",
-};
-
-const right = {
+const rightSide = {
   display: "flex",
   flexDirection: "column",
   alignItems: "flex-end",
   gap: "10px",
 };
 
-const qty = {
+const qtyWrapper = {
   display: "flex",
   alignItems: "center",
   gap: "10px",
 };
 
-const btn = {
-  width: "30px",
-  height: "30px",
+const qtyBtn = {
+  width: "34px",
+  height: "34px",
   borderRadius: "50%",
   border: "1px solid #1dbf73",
   background: "transparent",
   color: "#1dbf73",
+  fontSize: "18px",
   cursor: "pointer",
 };
 
-const remove = {
-  background: "#ff4d4d",
-  border: "none",
-  color: "white",
-  padding: "6px 12px",
+const removeBtn = {
+  background: "rgba(255,107,107,0.15)",
+  color: "#ff6b6b",
+  border: "1px solid rgba(255,107,107,0.4)",
+  padding: "6px 14px",
   borderRadius: "20px",
   cursor: "pointer",
+  fontSize: "14px",
 };
 
-const totalBox = {
-  fontSize: "22px",
-  marginTop: "25px",
+const priceText = {
   color: "#1dbf73",
+  marginTop: "4px",
 };
 
-const form = {
+const subText = {
+  opacity: 0.6,
+  fontSize: "14px",
+};
+
+const totalRow = {
+  display: "flex",
+  justifyContent: "space-between",
+  marginTop: "30px",
+  fontSize: "20px",
+};
+
+const formBox = {
   marginTop: "20px",
   display: "flex",
   flexDirection: "column",
   gap: "10px",
 };
 
-const input = {
+const inputStyle = {
   padding: "12px",
-  borderRadius: "8px",
-  border: "1px solid #1dbf73",
+  borderRadius: "10px",
+  border: "1px solid rgba(255,255,255,0.2)",
   background: "#02130d",
   color: "white",
 };
 
 const actions = {
-  marginTop: "25px",
   display: "flex",
   justifyContent: "space-between",
+  alignItems: "center",
+  marginTop: "30px",
+  flexWrap: "wrap",
+  gap: "14px",
 };
 
-const clear = {
-  background: "#444",
-  border: "none",
-  padding: "10px 20px",
-  borderRadius: "20px",
-  color: "white",
+const clearBtn = {
+  background: "rgba(255,255,255,0.08)",
+  color: "#fff",
+  padding: "12px 20px",
+  borderRadius: "30px",
+  border: "1px solid rgba(255,255,255,0.2)",
   cursor: "pointer",
 };
 
-const checkout = {
+const checkoutBtn = {
   background: "#1dbf73",
-  border: "none",
-  padding: "12px 25px",
-  borderRadius: "20px",
   color: "#02130d",
+  padding: "14px 26px",
+  borderRadius: "30px",
   fontWeight: "600",
+  border: "none",
   cursor: "pointer",
 };
