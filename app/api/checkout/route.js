@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 
 export async function POST(req) {
+if (process.env.PAYMENTS_ENABLED !== "true") {
+  return NextResponse.json(
+    { error: "Payments are temporarily disabled" },
+    { status: 403 }
+  );
+}
   try {
     const body = await req.json();
     const { amount, name, phone } = body;
