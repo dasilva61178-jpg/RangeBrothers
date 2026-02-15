@@ -13,20 +13,20 @@ export async function POST(req) {
         Authorization: `Bearer ${process.env.PAYCHANGU_SECRET_KEY}`,
       },
       body: JSON.stringify({
-        amount: amount,
+        amount,
         currency: "MWK",
         callback_url: "https://rangebrothers.store/track",
         return_url: "https://rangebrothers.store/track",
         customer: {
-          name: name,
-          phone: phone,
+          name,
+          phone,
         },
       }),
     });
 
     const data = await response.json();
 
-    console.log("PAYCHANGU RESPONSE:", data);
+    console.log("PayChangu response:", data);
 
     return NextResponse.json(data);
   } catch (error) {
