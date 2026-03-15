@@ -1,227 +1,434 @@
-
 "use client";
 
 import { useState } from "react";
 import Link from "next/link";
 import { categories, phones } from "../../data/phones";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function Products() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortOption, setSortOption] = useState("none");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // -----------------------------
-  // SORT LOGIC
-  // -----------------------------
   const sortPhones = (list) => {
     switch (sortOption) {
       case "price-low":
         return [...list].sort(
           (a, b) =>
-            Math.min(...a.variants.map(v => v.price)) -
-            Math.min(...b.variants.map(v => v.price))
+            Math.min(...a.variants.map((v) => v.price)) -
+            Math.min(...b.variants.map((v) => v.price))
         );
-
       case "price-high":
         return [...list].sort(
           (a, b) =>
-            Math.min(...b.variants.map(v => v.price)) -
-            Math.min(...a.variants.map(v => v.price))
+            Math.min(...b.variants.map((v) => v.price)) -
+            Math.min(...a.variants.map((v) => v.price))
         );
-
       case "name-az":
         return [...list].sort((a, b) => a.name.localeCompare(b.name));
-
       case "name-za":
         return [...list].sort((a, b) => b.name.localeCompare(a.name));
-
       default:
         return list;
     }
   };
 
-  // -----------------------------
-  // FILTER → SEARCH → SORT
-  // -----------------------------
   let filteredPhones =
     selectedCategory === "all"
       ? phones
-      : phones.filter(p => p.category === selectedCategory);
+      : phones.filter((p) => p.category === selectedCategory);
 
-  filteredPhones = filteredPhones.filter(p =>
+  filteredPhones = filteredPhones.filter((p) =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   filteredPhones = sortPhones(filteredPhones);
 
-  // -----------------------------
-  // UI
-  // -----------------------------
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
-      
-      {/* SIDEBAR */}
-      <aside
-        style={{
-          width: "220px",
-          background: "rgba(255,255,255,0.03)",
-          borderRight: "1px solid rgba(255,255,255,0.1)",
-          padding: "25px 15px",
-        }}
-      >
-        <h2 style={{ color: "#1dbf73", marginBottom: "20px" }}>
-          Categories
-        </h2>
+    <div style={pageWrapper}>
+      {/* BG */}
+      <div style={bgGrid} />
+      <div style={bgGlow} />
 
-        <button
-          onClick={() => setSelectedCategory("all")}
-          style={categoryBtn(selectedCategory === "all")}
-        >
-          All Phones
-        </button>
+      <div style={layout}>
+        {/* SIDEBAR */}
+        <aside style={sidebar}>
+          <div style={sidebarInner}>
+            <p style={sidebarLabel}>CATEGORIES</p>
 
-        {categories.map(cat => (
-          <button
-            key={cat.key}
-            onClick={() => setSelectedCategory(cat.key)}
-            style={categoryBtn(selectedCategory === cat.key)}
-          >
-            {cat.name}
-          </button>
-        ))}
-      </aside>
+            <button
+              onClick={() => setSelectedCategory("all")}
+              style={catBtn(selectedCategory === "all")}
+            >
+              <span>All Phones</span>
+              <span style={catCount}>{phones.length}</span>
+            </button>
 
-      {/* MAIN */}
-      <main style={{ flex: 1, padding: "30px" }}>
-        <h1 style={{ fontSize: "36px", color: "#1dbf73", marginBottom: "20px" }}>
-          Products
-        </h1>
-
-        {/* SEARCH */}
-        <input
-          type="text"
-          placeholder="Search phones..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={searchStyle}
-        />
-
-        {/* SORT */}
-        <select
-          value={sortOption}
-          onChange={(e) => setSortOption(e.target.value)}
-          style={sortStyle}
-        >
-          <option value="none">Sort By</option>
-          <option value="price-low">Price: Low → High</option>
-          <option value="price-high">Price: High → Low</option>
-          <option value="name-az">Name: A → Z</option>
-          <option value="name-za">Name: Z → A</option>
-        </select>
-
-        {/* GRID */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-            gap: "20px",
-            marginTop: "20px",
-          }}
-        >
-          {filteredPhones.map((product, index) => {
-            const startingPrice = Math.min(
-              ...product.variants.map(v => v.price)
-            );
-
-            return (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: index * 0.05 }}
-              >
-                <Link
-                  href={`/products/${product.id}`}
-                  style={{ textDecoration: "none", color: "inherit" }}
+            {categories.map((cat) => {
+              const count = phones.filter((p) => p.category === cat.key).length;
+              return (
+                <button
+                  key={cat.key}
+                  onClick={() => setSelectedCategory(cat.key)}
+                  style={catBtn(selectedCategory === cat.key)}
                 >
-                  <div style={cardStyle}>
-                    <h3 style={{ color: "white" }}>{product.name}</h3>
+                  <span>{cat.name}</span>
+                  <span style={catCount}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </aside>
 
-                    <p style={{ color: "#aaa", margin: "6px 0" }}>
-                      {product.variants.length} storage options
-                    </p>
+        {/* MAIN */}
+        <main style={main}>
+          {/* HEADER */}
+          <div style={mainHeader}>
+            <div>
+              <h1 style={pageTitle}>
+                {selectedCategory === "all"
+                  ? "All Phones"
+                  : categories.find((c) => c.key === selectedCategory)?.name}
+              </h1>
+              <p style={resultCount}>
+                {filteredPhones.length} phone{filteredPhones.length !== 1 ? "s" : ""} found
+              </p>
+            </div>
+          </div>
 
-                    <p style={{ color: "#1dbf73", fontWeight: "bold" }}>
-                      From MWK {startingPrice.toLocaleString()}
-                    </p>
+          {/* SEARCH + SORT */}
+          <div style={toolbar}>
+            <div style={searchWrapper}>
+              <span style={searchIcon}>🔍</span>
+              <input
+                type="text"
+                placeholder="Search phones..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={searchInput}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  style={clearBtn}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
 
-                    <button style={viewBtn}>
-                      View Details
-                    </button>
-                  </div>
-                </Link>
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value)}
+              style={sortSelect}
+            >
+              <option value="none">Sort By</option>
+              <option value="price-low">Price: Low → High</option>
+              <option value="price-high">Price: High → Low</option>
+              <option value="name-az">Name: A → Z</option>
+              <option value="name-za">Name: Z → A</option>
+            </select>
+          </div>
+
+          {/* GRID */}
+          <AnimatePresence mode="wait">
+            {filteredPhones.length === 0 ? (
+              <motion.div
+                key="empty"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                style={emptyState}
+              >
+                <span style={{ fontSize: "48px" }}>📱</span>
+                <p style={{ color: "rgba(255,255,255,0.5)", marginTop: "12px" }}>
+                  No phones found for "{searchQuery}"
+                </p>
               </motion.div>
-            );
-          })}
-        </div>
-      </main>
+            ) : (
+              <motion.div
+                key="grid"
+                style={grid}
+              >
+                {filteredPhones.map((product, index) => {
+                  const startingPrice = Math.min(
+                    ...product.variants.map((v) => v.price)
+                  );
+                  const img = Object.values(product.images)[0];
+
+                  return (
+                    <motion.div
+                      key={product.id}
+                      initial={{ opacity: 0, y: 24 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.35, delay: (index % 12) * 0.04 }}
+                      whileHover={{ y: -6, transition: { duration: 0.2 } }}
+                    >
+                      <Link
+                        href={`/products/${product.id}`}
+                        style={card}
+                      >
+                        <div style={cardImgBox}>
+                          <img
+                            src={img}
+                            alt={product.name}
+                            style={cardImg}
+                          />
+                        </div>
+                        <div style={cardInfo}>
+                          <h3 style={cardName}>{product.name}</h3>
+                          <p style={cardVariants}>
+                            {product.variants.length} options · {product.colors.length} colors
+                          </p>
+                          <div style={cardBottom}>
+                            <span style={cardPrice}>
+                              MWK {startingPrice.toLocaleString()}
+                            </span>
+                            <span style={viewBtn}>View →</span>
+                          </div>
+                        </div>
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
+      </div>
     </div>
   );
 }
 
-/* -----------------------------
-   STYLES
------------------------------ */
+/* ─── STYLES ─── */
 
-const categoryBtn = (active) => ({
-  padding: "10px",
-  marginBottom: "10px",
-  background: active ? "#1dbf73" : "transparent",
-  borderRadius: "8px",
-  border: "1px solid rgba(255,255,255,0.1)",
-  color: active ? "#02130d" : "#d8e6df",
-  cursor: "pointer",
+const pageWrapper = {
+  minHeight: "100vh",
+  background: "#060a07",
+  color: "#fff",
+  position: "relative",
+};
+
+const bgGrid = {
+  position: "fixed",
+  inset: 0,
+  backgroundImage: `linear-gradient(rgba(29,191,115,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29,191,115,0.04) 1px, transparent 1px)`,
+  backgroundSize: "40px 40px",
+  pointerEvents: "none",
+  zIndex: 0,
+};
+
+const bgGlow = {
+  position: "fixed",
+  width: "600px",
+  height: "600px",
+  background: "radial-gradient(circle, rgba(29,191,115,0.1) 0%, transparent 70%)",
+  top: "0",
+  right: "0",
+  pointerEvents: "none",
+  zIndex: 0,
+};
+
+const layout = {
+  display: "flex",
+  position: "relative",
+  zIndex: 1,
+  minHeight: "100vh",
+};
+
+const sidebar = {
+  width: "240px",
+  flexShrink: 0,
+  borderRight: "1px solid rgba(255,255,255,0.07)",
+  padding: "32px 0",
+  position: "sticky",
+  top: 0,
+  height: "100vh",
+  overflowY: "auto",
+};
+
+const sidebarInner = {
+  padding: "0 16px",
+};
+
+const sidebarLabel = {
+  fontSize: "11px",
+  fontWeight: "700",
+  letterSpacing: "0.12em",
+  color: "rgba(255,255,255,0.3)",
+  marginBottom: "12px",
+  marginTop: 0,
+};
+
+const catBtn = (active) => ({
   width: "100%",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "10px 14px",
+  marginBottom: "6px",
+  background: active ? "rgba(29,191,115,0.15)" : "transparent",
+  borderRadius: "12px",
+  border: active ? "1px solid rgba(29,191,115,0.35)" : "1px solid transparent",
+  color: active ? "#1dbf73" : "rgba(255,255,255,0.65)",
+  cursor: "pointer",
+  fontSize: "14px",
+  fontWeight: active ? "700" : "400",
   textAlign: "left",
+  transition: "all 0.15s",
 });
 
-const searchStyle = {
+const catCount = {
+  fontSize: "12px",
+  background: "rgba(255,255,255,0.08)",
+  borderRadius: "100px",
+  padding: "2px 8px",
+  color: "rgba(255,255,255,0.4)",
+};
+
+const main = {
+  flex: 1,
+  padding: "32px 32px 80px",
+  minWidth: 0,
+};
+
+const mainHeader = {
+  marginBottom: "24px",
+};
+
+const pageTitle = {
+  fontSize: "32px",
+  fontWeight: "900",
+  letterSpacing: "-0.02em",
+  margin: "0 0 4px",
+};
+
+const resultCount = {
+  fontSize: "13px",
+  color: "rgba(255,255,255,0.4)",
+  margin: 0,
+};
+
+const toolbar = {
+  display: "flex",
+  gap: "12px",
+  marginBottom: "28px",
+  flexWrap: "wrap",
+};
+
+const searchWrapper = {
+  flex: 1,
+  minWidth: "200px",
+  position: "relative",
+  display: "flex",
+  alignItems: "center",
+};
+
+const searchIcon = {
+  position: "absolute",
+  left: "14px",
+  fontSize: "14px",
+  opacity: 0.5,
+};
+
+const searchInput = {
   width: "100%",
-  padding: "10px 14px",
-  borderRadius: "8px",
-  border: "1px solid #1dbf73",
-  background: "#02130d",
-  color: "white",
-  marginBottom: "15px",
-  fontSize: "16px",
-};
-
-const sortStyle = {
-  padding: "8px 12px",
-  borderRadius: "8px",
-  background: "#02130d",
-  color: "white",
-  border: "1px solid #1dbf73",
-};
-
-const cardStyle = {
-  background: "rgba(255,255,255,0.03)",
-  padding: "20px",
+  padding: "11px 40px 11px 40px",
   borderRadius: "12px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.04)",
+  color: "#fff",
+  fontSize: "14px",
+  outline: "none",
+};
+
+const clearBtn = {
+  position: "absolute",
+  right: "12px",
+  background: "transparent",
+  border: "none",
+  color: "rgba(255,255,255,0.4)",
+  cursor: "pointer",
+  fontSize: "14px",
+};
+
+const sortSelect = {
+  padding: "11px 16px",
+  borderRadius: "12px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(255,255,255,0.04)",
+  color: "#fff",
+  fontSize: "14px",
+  cursor: "pointer",
+};
+
+const grid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+  gap: "16px",
+};
+
+const emptyState = {
+  textAlign: "center",
+  padding: "80px 0",
+};
+
+const card = {
+  display: "block",
+  background: "rgba(255,255,255,0.03)",
   border: "1px solid rgba(255,255,255,0.08)",
-  transition: "transform 0.2s ease",
+  borderRadius: "18px",
+  textDecoration: "none",
+  color: "#fff",
+  overflow: "hidden",
+  transition: "border-color 0.2s",
+};
+
+const cardImgBox = {
+  background: "rgba(255,255,255,0.03)",
+  padding: "28px",
+  display: "flex",
+  justifyContent: "center",
+  borderBottom: "1px solid rgba(255,255,255,0.05)",
+};
+
+const cardImg = {
+  height: "140px",
+  objectFit: "contain",
+};
+
+const cardInfo = {
+  padding: "16px",
+};
+
+const cardName = {
+  fontSize: "15px",
+  fontWeight: "700",
+  margin: "0 0 4px",
+  color: "#fff",
+};
+
+const cardVariants = {
+  fontSize: "12px",
+  color: "rgba(255,255,255,0.4)",
+  margin: "0 0 14px",
+};
+
+const cardBottom = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+};
+
+const cardPrice = {
+  fontSize: "14px",
+  fontWeight: "700",
+  color: "#1dbf73",
 };
 
 const viewBtn = {
-  marginTop: "12px",
-  padding: "8px 14px",
-  background: "#1dbf73",
-  borderRadius: "8px",
-  border: "none",
-  color: "#02130d",
-  cursor: "pointer",
+  fontSize: "13px",
+  color: "#1dbf73",
   fontWeight: "600",
 };
-
