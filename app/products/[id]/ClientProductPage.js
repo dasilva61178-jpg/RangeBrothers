@@ -4,11 +4,21 @@ import { useState, useEffect } from "react";
 import { useCart } from "../../context/cartcontext";
 import { motion, AnimatePresence } from "framer-motion";
 
+const panelVariants = {
+  hidden: { opacity: 0, y: 24 },
+  show: (delay) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, delay, ease: [0.25, 0.1, 0.25, 1] },
+  }),
+};
+
 export default function ClientProductPage({ product }) {
   const { addToCart, cart } = useCart();
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedVariant, setSelectedVariant] = useState({});
   const [added, setAdded] = useState(false);
+  const [prevColor, setPrevColor] = useState("");
 
   useEffect(() => {
     if (product) {
@@ -18,6 +28,11 @@ export default function ClientProductPage({ product }) {
   }, [product]);
 
   if (!product) return null;
+
+  const handleColorChange = (color) => {
+    setPrevColor(selectedColor);
+    setSelectedColor(color);
+  };
 
   const handleAddToCart = () => {
     addToCart({
@@ -29,10 +44,8 @@ export default function ClientProductPage({ product }) {
       quantity: 1,
     });
     setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
+    setTimeout(() => setAdded(false), 2200);
   };
-
-  const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
 
   return (
     <div style={pageWrapper}>
@@ -41,151 +54,233 @@ export default function ClientProductPage({ product }) {
 
       <div style={layout}>
         {/* IMAGE PANEL */}
-        <div style={imagePanel}>
+        <motion.div
+          custom={0}
+          variants={panelVariants}
+          initial="hidden"
+          animate="show"
+          style={imagePanel}
+        >
+          {/* IMAGE */}
           <AnimatePresence mode="wait">
             <motion.div
               key={selectedColor}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.25 }}
+              initial={{ opacity: 0, scale: 0.88, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.88, y: -20 }}
+              transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
               style={imgBox}
             >
-              <img
+              <motion.img
                 src={product.images[selectedColor]}
                 alt={`${product.name} ${selectedColor}`}
                 style={productImg}
+                animate={{
+                  filter: [
+                    "drop-shadow(0 20px 40px rgba(29,191,115,0.15))",
+                    "drop-shadow(0 28px 50px rgba(29,191,115,0.28))",
+                    "drop-shadow(0 20px 40px rgba(29,191,115,0.15))",
+                  ],
+                }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
               />
             </motion.div>
           </AnimatePresence>
 
-          {/* COLOR DOTS */}
-          <div style={colorDots}>
-            {product.colors.map((color) => (
-              <button
+          {/* COLOR CHIPS */}
+          <motion.div
+            style={colorChips}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+          >
+            {product.colors.map((color, i) => (
+              <motion.button
                 key={color}
-                onClick={() => setSelectedColor(color)}
-                style={colorDot(selectedColor === color)}
-                title={color}
+                onClick={() => handleColorChange(color)}
+                style={colorChip(selectedColor === color)}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.35 + i * 0.06 }}
+                whileHover={{ scale: 1.08, transition: { duration: 0.15 } }}
+                whileTap={{ scale: 0.94 }}
               >
-                <span style={colorDotLabel}>{color}</span>
-              </button>
+                {color}
+              </motion.button>
             ))}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* INFO PANEL */}
-        <div style={infoPanel}>
+        <motion.div
+          custom={0.15}
+          variants={panelVariants}
+          initial="hidden"
+          animate="show"
+          style={infoPanel}
+        >
           {/* BREADCRUMB */}
-          <p style={breadcrumb}>
+          <motion.p
+            style={breadcrumb}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
             <a href="/products" style={breadcrumbLink}>Products</a>
             {" / "}
             <span style={{ color: "rgba(255,255,255,0.5)" }}>{product.name}</span>
-          </p>
+          </motion.p>
 
           <motion.h1
+            style={productName}
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            style={productName}
+            transition={{ duration: 0.5, delay: 0.25 }}
           >
             {product.name}
           </motion.h1>
 
           {/* PRICE */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1 }}
             style={priceBox}
+            initial={{ opacity: 0, x: -16 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.45, delay: 0.32 }}
           >
-            <span style={price}>
-              MWK {selectedVariant.price?.toLocaleString()}
-            </span>
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={selectedVariant.price}
+                style={price}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+              >
+                MWK {selectedVariant.price?.toLocaleString()}
+              </motion.span>
+            </AnimatePresence>
             <span style={priceBadge}>In Stock</span>
           </motion.div>
 
-          {/* DIVIDER */}
           <div style={divider} />
 
-          {/* COLOR SELECTION */}
-          <div style={section}>
+          {/* COLOR */}
+          <motion.div
+            style={section}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
             <p style={sectionLabel}>
               Color — <span style={sectionValue}>{selectedColor}</span>
             </p>
             <div style={colorBtns}>
-              {product.colors.map((color) => (
-                <button
+              {product.colors.map((color, i) => (
+                <motion.button
                   key={color}
-                  onClick={() => setSelectedColor(color)}
+                  onClick={() => handleColorChange(color)}
                   style={colorBtn(selectedColor === color)}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.42 + i * 0.05 }}
+                  whileHover={{ scale: 1.05, transition: { duration: 0.15 } }}
+                  whileTap={{ scale: 0.96 }}
                 >
                   {color}
-                </button>
+                </motion.button>
               ))}
             </div>
-          </div>
+          </motion.div>
 
-          {/* STORAGE SELECTION */}
-          <div style={section}>
+          {/* STORAGE */}
+          <motion.div
+            style={section}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+          >
             <p style={sectionLabel}>
               Storage — <span style={sectionValue}>{selectedVariant.storage}</span>
             </p>
             <div style={storageBtns}>
-              {product.variants.map((variant) => (
-                <button
+              {product.variants.map((variant, i) => (
+                <motion.button
                   key={variant.storage}
                   onClick={() => setSelectedVariant(variant)}
                   style={storageBtn(selectedVariant.storage === variant.storage)}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.52 + i * 0.06 }}
+                  whileHover={{ scale: 1.04, transition: { duration: 0.15 } }}
+                  whileTap={{ scale: 0.96 }}
                 >
                   <span style={storageBtnLabel}>{variant.storage}</span>
-                  <span style={storageBtnPrice}>
-                    MWK {variant.price.toLocaleString()}
-                  </span>
-                </button>
+                  <span style={storageBtnPrice}>MWK {variant.price.toLocaleString()}</span>
+                </motion.button>
               ))}
             </div>
-          </div>
+          </motion.div>
 
-          {/* DIVIDER */}
           <div style={divider} />
 
           {/* ADD TO CART */}
-          <motion.button
-            onClick={handleAddToCart}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            style={added ? addedBtn : addBtn}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
           >
-            <AnimatePresence mode="wait">
+            <motion.button
+              onClick={handleAddToCart}
+              style={added ? addedBtn : addBtn}
+              whileHover={!added ? { scale: 1.02, boxShadow: "0 0 40px rgba(29,191,115,0.5)" } : {}}
+              whileTap={{ scale: 0.97 }}
+            >
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={added ? "added" : "add"}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.18 }}
+                >
+                  {added ? "✓ Added to Cart!" : "Add to Cart"}
+                </motion.span>
+              </AnimatePresence>
+            </motion.button>
+
+            <motion.a
+              href="https://wa.me/265882267019"
+              style={whatsappBtn}
+              target="_blank"
+              rel="noreferrer"
+              whileHover={{ scale: 1.02, background: "rgba(255,255,255,0.09)", transition: { duration: 0.15 } }}
+              whileTap={{ scale: 0.97 }}
+            >
+              💬 Order via WhatsApp
+            </motion.a>
+          </motion.div>
+
+          {/* TRUST TAGS */}
+          <motion.div
+            style={trustRow}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.75 }}
+          >
+            {["✔ Verified Device", "🚚 Fast Delivery", "🔒 Secure Order"].map((t, i) => (
               <motion.span
-                key={added ? "added" : "add"}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.15 }}
+                key={t}
+                style={trustTag}
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.78 + i * 0.07 }}
+                whileHover={{ scale: 1.05, background: "rgba(29,191,115,0.1)", transition: { duration: 0.15 } }}
               >
-                {added ? "✓ Added to Cart!" : "Add to Cart"}
+                {t}
               </motion.span>
-            </AnimatePresence>
-          </motion.button>
-
-          <a
-            href="https://wa.me/265882267019"
-            style={whatsappBtn}
-            target="_blank"
-            rel="noreferrer"
-          >
-            💬 Order via WhatsApp
-          </a>
-
-          {/* TRUST POINTS */}
-          <div style={trustRow}>
-            {["✔ Verified Device", "🚚 Fast Delivery", "🔒 Secure Order"].map((t) => (
-              <span key={t} style={trustTag}>{t}</span>
             ))}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
     </div>
   );
@@ -224,12 +319,12 @@ const bgGlow = {
 const layout = {
   display: "flex",
   flexWrap: "wrap",
-  gap: "0",
   maxWidth: "1100px",
   margin: "0 auto",
   padding: "60px 24px 100px",
   position: "relative",
   zIndex: 1,
+  gap: "24px",
 };
 
 const imagePanel = {
@@ -241,7 +336,6 @@ const imagePanel = {
   background: "rgba(255,255,255,0.02)",
   border: "1px solid rgba(255,255,255,0.07)",
   borderRadius: "28px",
-  marginRight: "24px",
 };
 
 const imgBox = {
@@ -250,23 +344,23 @@ const imgBox = {
   alignItems: "center",
   height: "320px",
   marginBottom: "32px",
+  width: "100%",
 };
 
 const productImg = {
   maxHeight: "300px",
   maxWidth: "100%",
   objectFit: "contain",
-  filter: "drop-shadow(0 20px 40px rgba(29,191,115,0.2))",
 };
 
-const colorDots = {
+const colorChips = {
   display: "flex",
-  gap: "10px",
+  gap: "8px",
   flexWrap: "wrap",
   justifyContent: "center",
 };
 
-const colorDot = (active) => ({
+const colorChip = (active) => ({
   padding: "6px 14px",
   borderRadius: "100px",
   border: active ? "2px solid #1dbf73" : "1px solid rgba(255,255,255,0.15)",
@@ -275,16 +369,10 @@ const colorDot = (active) => ({
   fontSize: "12px",
   fontWeight: active ? "700" : "400",
   cursor: "pointer",
-  transition: "all 0.15s",
 });
-
-const colorDotLabel = {
-  pointerEvents: "none",
-};
 
 const infoPanel = {
   flex: "1 1 380px",
-  paddingLeft: "8px",
 };
 
 const breadcrumb = {
@@ -318,6 +406,7 @@ const price = {
   fontWeight: "900",
   color: "#1dbf73",
   letterSpacing: "-0.02em",
+  display: "inline-block",
 };
 
 const priceBadge = {
@@ -336,9 +425,7 @@ const divider = {
   margin: "24px 0",
 };
 
-const section = {
-  marginBottom: "24px",
-};
+const section = { marginBottom: "24px" };
 
 const sectionLabel = {
   fontSize: "13px",
@@ -367,7 +454,6 @@ const colorBtn = (active) => ({
   fontSize: "13px",
   fontWeight: active ? "700" : "400",
   cursor: "pointer",
-  transition: "all 0.15s",
 });
 
 const storageBtns = {
@@ -385,7 +471,6 @@ const storageBtn = (active) => ({
   border: active ? "2px solid #1dbf73" : "1px solid rgba(255,255,255,0.12)",
   background: active ? "rgba(29,191,115,0.1)" : "rgba(255,255,255,0.03)",
   cursor: "pointer",
-  transition: "all 0.15s",
   gap: "4px",
 });
 
@@ -412,7 +497,7 @@ const addBtn = {
   cursor: "pointer",
   marginBottom: "12px",
   boxShadow: "0 0 30px rgba(29,191,115,0.35)",
-  transition: "all 0.2s",
+  boxSizing: "border-box",
 };
 
 const addedBtn = {
@@ -436,7 +521,6 @@ const whatsappBtn = {
   textDecoration: "none",
   textAlign: "center",
   marginBottom: "24px",
-  transition: "all 0.2s",
   boxSizing: "border-box",
 };
 
@@ -452,4 +536,5 @@ const trustTag = {
   background: "rgba(255,255,255,0.05)",
   padding: "6px 12px",
   borderRadius: "100px",
+  cursor: "default",
 };

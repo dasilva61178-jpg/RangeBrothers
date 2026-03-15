@@ -5,6 +5,20 @@ import Link from "next/link";
 import { categories, phones } from "../../data/phones";
 import { motion, AnimatePresence } from "framer-motion";
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.06, delayChildren: 0.05 },
+  },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 28, scale: 0.97 },
+  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] } },
+  exit: { opacity: 0, y: -16, scale: 0.97, transition: { duration: 0.25 } },
+};
+
 export default function Products() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortOption, setSortOption] = useState("none");
@@ -13,16 +27,12 @@ export default function Products() {
   const sortPhones = (list) => {
     switch (sortOption) {
       case "price-low":
-        return [...list].sort(
-          (a, b) =>
-            Math.min(...a.variants.map((v) => v.price)) -
-            Math.min(...b.variants.map((v) => v.price))
+        return [...list].sort((a, b) =>
+          Math.min(...a.variants.map((v) => v.price)) - Math.min(...b.variants.map((v) => v.price))
         );
       case "price-high":
-        return [...list].sort(
-          (a, b) =>
-            Math.min(...b.variants.map((v) => v.price)) -
-            Math.min(...a.variants.map((v) => v.price))
+        return [...list].sort((a, b) =>
+          Math.min(...b.variants.map((v) => v.price)) - Math.min(...a.variants.map((v) => v.price))
         );
       case "name-az":
         return [...list].sort((a, b) => a.name.localeCompare(b.name));
@@ -33,10 +43,9 @@ export default function Products() {
     }
   };
 
-  let filteredPhones =
-    selectedCategory === "all"
-      ? phones
-      : phones.filter((p) => p.category === selectedCategory);
+  let filteredPhones = selectedCategory === "all"
+    ? phones
+    : phones.filter((p) => p.category === selectedCategory);
 
   filteredPhones = filteredPhones.filter((p) =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -46,58 +55,67 @@ export default function Products() {
 
   return (
     <div style={pageWrapper}>
-      {/* BG */}
       <div style={bgGrid} />
       <div style={bgGlow} />
 
       <div style={layout}>
         {/* SIDEBAR */}
-        <aside style={sidebar}>
+        <motion.aside
+          initial={{ opacity: 0, x: -24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          style={sidebar}
+        >
           <div style={sidebarInner}>
             <p style={sidebarLabel}>CATEGORIES</p>
 
-            <button
-              onClick={() => setSelectedCategory("all")}
-              style={catBtn(selectedCategory === "all")}
-            >
-              <span>All Phones</span>
-              <span style={catCount}>{phones.length}</span>
-            </button>
-
-            {categories.map((cat) => {
-              const count = phones.filter((p) => p.category === cat.key).length;
-              return (
-                <button
-                  key={cat.key}
-                  onClick={() => setSelectedCategory(cat.key)}
-                  style={catBtn(selectedCategory === cat.key)}
-                >
-                  <span>{cat.name}</span>
-                  <span style={catCount}>{count}</span>
-                </button>
-              );
-            })}
+            {[{ name: "All Phones", key: "all", count: phones.length }, ...categories.map((c) => ({
+              ...c,
+              count: phones.filter((p) => p.category === c.key).length,
+            }))].map((cat, i) => (
+              <motion.button
+                key={cat.key}
+                onClick={() => setSelectedCategory(cat.key)}
+                style={catBtn(selectedCategory === cat.key)}
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.35, delay: i * 0.06 }}
+                whileHover={{ x: 4, transition: { duration: 0.15 } }}
+                whileTap={{ scale: 0.97 }}
+              >
+                <span>{cat.name}</span>
+                <span style={catCount}>{cat.count}</span>
+              </motion.button>
+            ))}
           </div>
-        </aside>
+        </motion.aside>
 
         {/* MAIN */}
         <main style={main}>
           {/* HEADER */}
-          <div style={mainHeader}>
-            <div>
-              <h1 style={pageTitle}>
-                {selectedCategory === "all"
-                  ? "All Phones"
-                  : categories.find((c) => c.key === selectedCategory)?.name}
-              </h1>
-              <p style={resultCount}>
-                {filteredPhones.length} phone{filteredPhones.length !== 1 ? "s" : ""} found
-              </p>
-            </div>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45 }}
+            style={mainHeader}
+          >
+            <h1 style={pageTitle}>
+              {selectedCategory === "all"
+                ? "All Phones"
+                : categories.find((c) => c.key === selectedCategory)?.name}
+            </h1>
+            <p style={resultCount}>
+              {filteredPhones.length} phone{filteredPhones.length !== 1 ? "s" : ""} found
+            </p>
+          </motion.div>
 
-          {/* SEARCH + SORT */}
-          <div style={toolbar}>
+          {/* TOOLBAR */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            style={toolbar}
+          >
             <div style={searchWrapper}>
               <span style={searchIcon}>🔍</span>
               <input
@@ -107,14 +125,19 @@ export default function Products() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={searchInput}
               />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  style={clearBtn}
-                >
-                  ✕
-                </button>
-              )}
+              <AnimatePresence>
+                {searchQuery && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    onClick={() => setSearchQuery("")}
+                    style={clearBtn}
+                  >
+                    ✕
+                  </motion.button>
+                )}
+              </AnimatePresence>
             </div>
 
             <select
@@ -128,63 +151,75 @@ export default function Products() {
               <option value="name-az">Name: A → Z</option>
               <option value="name-za">Name: Z → A</option>
             </select>
-          </div>
+          </motion.div>
 
           {/* GRID */}
           <AnimatePresence mode="wait">
             {filteredPhones.length === 0 ? (
               <motion.div
                 key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
                 style={emptyState}
               >
-                <span style={{ fontSize: "48px" }}>📱</span>
+                <motion.span
+                  style={{ fontSize: "52px", display: "block" }}
+                  animate={{ rotate: [0, -10, 10, -10, 0] }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                >
+                  📱
+                </motion.span>
                 <p style={{ color: "rgba(255,255,255,0.5)", marginTop: "12px" }}>
                   No phones found for "{searchQuery}"
                 </p>
               </motion.div>
             ) : (
               <motion.div
-                key="grid"
+                key={selectedCategory + sortOption}
+                variants={containerVariants}
+                initial="hidden"
+                animate="show"
                 style={grid}
               >
-                {filteredPhones.map((product, index) => {
-                  const startingPrice = Math.min(
-                    ...product.variants.map((v) => v.price)
-                  );
+                {filteredPhones.map((product) => {
+                  const startingPrice = Math.min(...product.variants.map((v) => v.price));
                   const img = Object.values(product.images)[0];
 
                   return (
                     <motion.div
                       key={product.id}
-                      initial={{ opacity: 0, y: 24 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.35, delay: (index % 12) * 0.04 }}
-                      whileHover={{ y: -6, transition: { duration: 0.2 } }}
+                      variants={cardVariants}
+                      whileHover={{
+                        y: -8,
+                        boxShadow: "0 20px 40px rgba(29,191,115,0.15)",
+                        borderColor: "rgba(29,191,115,0.3)",
+                        transition: { duration: 0.2 },
+                      }}
+                      style={card}
                     >
-                      <Link
-                        href={`/products/${product.id}`}
-                        style={card}
-                      >
+                      <Link href={`/products/${product.id}`} style={cardLink}>
                         <div style={cardImgBox}>
-                          <img
+                          <motion.img
                             src={img}
                             alt={product.name}
                             style={cardImg}
+                            whileHover={{ scale: 1.1, transition: { duration: 0.3 } }}
                           />
                         </div>
                         <div style={cardInfo}>
                           <h3 style={cardName}>{product.name}</h3>
-                          <p style={cardVariants}>
+                          <p style={cardVariants2}>
                             {product.variants.length} options · {product.colors.length} colors
                           </p>
                           <div style={cardBottom}>
-                            <span style={cardPrice}>
-                              MWK {startingPrice.toLocaleString()}
-                            </span>
-                            <span style={viewBtn}>View →</span>
+                            <span style={cardPrice}>MWK {startingPrice.toLocaleString()}</span>
+                            <motion.span
+                              style={viewBtn}
+                              whileHover={{ x: 3, transition: { duration: 0.15 } }}
+                            >
+                              View →
+                            </motion.span>
                           </div>
                         </div>
                       </Link>
@@ -248,9 +283,7 @@ const sidebar = {
   overflowY: "auto",
 };
 
-const sidebarInner = {
-  padding: "0 16px",
-};
+const sidebarInner = { padding: "0 16px" };
 
 const sidebarLabel = {
   fontSize: "11px",
@@ -276,7 +309,6 @@ const catBtn = (active) => ({
   fontSize: "14px",
   fontWeight: active ? "700" : "400",
   textAlign: "left",
-  transition: "all 0.15s",
 });
 
 const catCount = {
@@ -293,9 +325,7 @@ const main = {
   minWidth: 0,
 };
 
-const mainHeader = {
-  marginBottom: "24px",
-};
+const mainHeader = { marginBottom: "24px" };
 
 const pageTitle = {
   fontSize: "32px",
@@ -334,13 +364,14 @@ const searchIcon = {
 
 const searchInput = {
   width: "100%",
-  padding: "11px 40px 11px 40px",
+  padding: "11px 40px",
   borderRadius: "12px",
   border: "1px solid rgba(255,255,255,0.12)",
   background: "rgba(255,255,255,0.04)",
   color: "#fff",
   fontSize: "14px",
   outline: "none",
+  boxSizing: "border-box",
 };
 
 const clearBtn = {
@@ -375,14 +406,16 @@ const emptyState = {
 };
 
 const card = {
-  display: "block",
   background: "rgba(255,255,255,0.03)",
   border: "1px solid rgba(255,255,255,0.08)",
   borderRadius: "18px",
+  overflow: "hidden",
+};
+
+const cardLink = {
+  display: "block",
   textDecoration: "none",
   color: "#fff",
-  overflow: "hidden",
-  transition: "border-color 0.2s",
 };
 
 const cardImgBox = {
@@ -391,6 +424,7 @@ const cardImgBox = {
   display: "flex",
   justifyContent: "center",
   borderBottom: "1px solid rgba(255,255,255,0.05)",
+  overflow: "hidden",
 };
 
 const cardImg = {
@@ -398,9 +432,7 @@ const cardImg = {
   objectFit: "contain",
 };
 
-const cardInfo = {
-  padding: "16px",
-};
+const cardInfo = { padding: "16px" };
 
 const cardName = {
   fontSize: "15px",
@@ -409,7 +441,7 @@ const cardName = {
   color: "#fff",
 };
 
-const cardVariants = {
+const cardVariants2 = {
   fontSize: "12px",
   color: "rgba(255,255,255,0.4)",
   margin: "0 0 14px",
@@ -431,4 +463,5 @@ const viewBtn = {
   fontSize: "13px",
   color: "#1dbf73",
   fontWeight: "600",
+  display: "inline-block",
 };

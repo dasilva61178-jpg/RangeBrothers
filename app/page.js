@@ -1,10 +1,28 @@
-
 "use client";
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { phones } from "../data/phones";
+
+// Stagger container variant
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.12, delayChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 32 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.25, 0.1, 0.25, 1] } },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 40, scale: 0.97 },
+  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] } },
+};
 
 export default function HomePage() {
   const featured = phones.filter((p) =>
@@ -12,6 +30,7 @@ export default function HomePage() {
   );
 
   const [count, setCount] = useState(0);
+  const [glowPos, setGlowPos] = useState({ x: 50, y: 50 });
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -20,56 +39,81 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Subtle cursor glow effect
+  useEffect(() => {
+    const handleMove = (e) => {
+      setGlowPos({
+        x: (e.clientX / window.innerWidth) * 100,
+        y: (e.clientY / window.innerHeight) * 100,
+      });
+    };
+    window.addEventListener("mousemove", handleMove);
+    return () => window.removeEventListener("mousemove", handleMove);
+  }, []);
+
   return (
     <div style={container}>
       {/* ANIMATED BG */}
       <div style={bgGrid} />
       <div style={bgGlow1} />
       <div style={bgGlow2} />
+      <div
+        style={{
+          ...cursorGlow,
+          left: `${glowPos.x}%`,
+          top: `${glowPos.y}%`,
+        }}
+      />
 
-      {/* HERO */}
+      {/* HERO — staggered entrance */}
       <motion.section
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, ease: "easeOut" }}
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
         style={hero}
       >
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          style={badge}
-        >
+        <motion.div variants={itemVariants} style={badge}>
           🇲🇼 &nbsp;Malawi's #1 Phone Store
         </motion.div>
 
-        <h1 style={title}>
+        <motion.h1 variants={itemVariants} style={title}>
           Premium Phones.
           <br />
-          <span style={titleAccent}>Real Deals.</span>
-        </h1>
+          <motion.span
+            style={titleAccent}
+            initial={{ backgroundSize: "0% 100%" }}
+            animate={{ backgroundSize: "100% 100%" }}
+            transition={{ duration: 0.8, delay: 0.6, ease: "easeOut" }}
+          >
+            Real Deals.
+          </motion.span>
+        </motion.h1>
 
-        <p style={subtitle}>
+        <motion.p variants={itemVariants} style={subtitle}>
           Verified smartphones imported directly from trusted suppliers.
           <br />
           Transparent pricing. No surprises. Delivered across Malawi.
-        </p>
+        </motion.p>
 
-        <div style={actions}>
-          <Link href="/products" style={primaryBtn}>
-            Browse {count}+ Phones →
-          </Link>
-          <a href="https://wa.me/265882267019" style={secondaryBtn}>
-            💬 Chat on WhatsApp
-          </a>
-        </div>
+        <motion.div variants={itemVariants} style={actions}>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
+            <Link href="/products" style={primaryBtn}>
+              Browse {count}+ Phones →
+            </Link>
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
+            <a href="https://wa.me/265882267019" style={secondaryBtn}>
+              💬 Chat on WhatsApp
+            </a>
+          </motion.div>
+        </motion.div>
       </motion.section>
 
       {/* STATS */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.3 }}
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
         style={statsRow}
       >
         {[
@@ -78,53 +122,43 @@ export default function HomePage() {
           { number: "24hr", label: "Fast Delivery" },
           { number: "MWK", label: "Local Pricing" },
         ].map((s) => (
-          <div key={s.label} style={statItem}>
+          <motion.div key={s.label} variants={itemVariants} style={statItem}>
             <span style={statNum}>{s.number}</span>
             <span style={statLabel}>{s.label}</span>
-          </div>
+          </motion.div>
         ))}
       </motion.div>
 
       {/* TRUST CARDS */}
       <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.5 }}
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true, margin: "-80px" }}
         style={trustSection}
       >
         {[
-          {
-            icon: "✔",
-            title: "Verified Devices",
-            desc: "Every phone is inspected and authenticated before sale.",
-            color: "#1dbf73",
-          },
-          {
-            icon: "⚡",
-            title: "Fast Delivery",
-            desc: "Quick and secure delivery to your door across Malawi.",
-            color: "#f5c842",
-          },
-          {
-            icon: "🔒",
-            title: "Secure Ordering",
-            desc: "Order with confidence via WhatsApp or online checkout.",
-            color: "#42b0f5",
-          },
-        ].map((card, i) => (
+          { icon: "✔", title: "Verified Devices", desc: "Every phone is inspected and authenticated before sale.", color: "#1dbf73" },
+          { icon: "⚡", title: "Fast Delivery", desc: "Quick and secure delivery to your door across Malawi.", color: "#f5c842" },
+          { icon: "🔒", title: "Secure Ordering", desc: "Order with confidence via WhatsApp or online checkout.", color: "#42b0f5" },
+        ].map((card) => (
           <motion.div
             key={card.title}
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.4, delay: i * 0.1 }}
-            whileHover={{ y: -6, transition: { duration: 0.2 } }}
+            variants={cardVariants}
+            whileHover={{
+              y: -10,
+              boxShadow: `0 20px 40px ${card.color}22`,
+              borderColor: card.color + "55",
+              transition: { duration: 0.2 },
+            }}
             style={{ ...trustCard, borderColor: card.color + "33" }}
           >
-            <div style={{ ...trustIconBox, background: card.color + "22", color: card.color }}>
+            <motion.div
+              style={{ ...trustIconBox, background: card.color + "22", color: card.color }}
+              whileHover={{ scale: 1.15, rotate: 5, transition: { duration: 0.2 } }}
+            >
               {card.icon}
-            </div>
+            </motion.div>
             <h3 style={trustTitle}>{card.title}</h3>
             <p style={trustDesc}>{card.desc}</p>
           </motion.div>
@@ -135,66 +169,88 @@ export default function HomePage() {
       <motion.section
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.6 }}
+        viewport={{ once: true, margin: "-60px" }}
+        transition={{ duration: 0.4 }}
         style={featuredSection}
       >
-        <div style={sectionHeader}>
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          style={sectionHeader}
+        >
           <h2 style={sectionTitle}>Featured Phones</h2>
           <Link href="/products" style={seeAll}>View All →</Link>
-        </div>
+        </motion.div>
 
-        <div style={featuredGrid}>
-          {featured.map((phone, i) => (
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-40px" }}
+          style={featuredGrid}
+        >
+          {featured.map((phone) => (
             <motion.div
               key={phone.id}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: i * 0.1 }}
-              whileHover={{ y: -8, transition: { duration: 0.2 } }}
+              variants={cardVariants}
+              whileHover={{
+                y: -10,
+                boxShadow: "0 24px 48px rgba(29,191,115,0.15)",
+                borderColor: "rgba(29,191,115,0.3)",
+                transition: { duration: 0.2 },
+              }}
             >
               <Link href={`/products/${phone.id}`} style={featuredCard}>
                 <div style={imgWrapper}>
-                  <img
+                  <motion.img
                     src={Object.values(phone.images)[0]}
                     alt={phone.name}
                     style={phoneImg}
+                    whileHover={{ scale: 1.08, transition: { duration: 0.3 } }}
                   />
                 </div>
                 <div style={cardBody}>
                   <h4 style={cardName}>{phone.name}</h4>
-                  <p style={cardStorage}>
-                    {phone.variants.length} storage options
-                  </p>
+                  <p style={cardStorage}>{phone.variants.length} storage options</p>
                   <div style={cardFooter}>
-                    <span style={cardPrice}>
-                      From MWK {phone.variants[0].price.toLocaleString()}
-                    </span>
-                    <span style={cardArrow}>→</span>
+                    <span style={cardPrice}>From MWK {phone.variants[0].price.toLocaleString()}</span>
+                    <motion.span
+                      style={cardArrow}
+                      whileHover={{ x: 4, transition: { duration: 0.15 } }}
+                    >
+                      →
+                    </motion.span>
                   </div>
                 </div>
               </Link>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       </motion.section>
 
       {/* CTA BANNER */}
       <motion.section
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.5 }}
+        viewport={{ once: true, margin: "-40px" }}
+        transition={{ duration: 0.55 }}
+        whileHover={{ boxShadow: "0 0 60px rgba(29,191,115,0.12)", transition: { duration: 0.3 } }}
         style={ctaBanner}
       >
         <div style={ctaLeft}>
           <h2 style={ctaTitle}>Not sure which phone to get?</h2>
           <p style={ctaDesc}>Chat with us on WhatsApp and we'll help you find the perfect match.</p>
         </div>
-        <a href="https://wa.me/265882267019" style={ctaBtn}>
+        <motion.a
+          href="https://wa.me/265882267019"
+          style={ctaBtn}
+          whileHover={{ scale: 1.05, boxShadow: "0 0 36px rgba(29,191,115,0.5)" }}
+          whileTap={{ scale: 0.97 }}
+        >
           💬 Chat Now
-        </a>
+        </motion.a>
       </motion.section>
     </div>
   );
@@ -240,6 +296,17 @@ const bgGlow2 = {
   left: "-100px",
   pointerEvents: "none",
   zIndex: 0,
+};
+
+const cursorGlow = {
+  position: "fixed",
+  width: "400px",
+  height: "400px",
+  background: "radial-gradient(circle, rgba(29,191,115,0.06) 0%, transparent 60%)",
+  transform: "translate(-50%, -50%)",
+  pointerEvents: "none",
+  zIndex: 0,
+  transition: "left 0.4s ease, top 0.4s ease",
 };
 
 const hero = {
@@ -293,6 +360,7 @@ const actions = {
 };
 
 const primaryBtn = {
+  display: "inline-block",
   background: "#1dbf73",
   color: "#02130d",
   padding: "15px 30px",
@@ -305,6 +373,7 @@ const primaryBtn = {
 };
 
 const secondaryBtn = {
+  display: "inline-block",
   background: "rgba(255,255,255,0.06)",
   color: "#fff",
   padding: "15px 30px",
@@ -320,7 +389,6 @@ const statsRow = {
   zIndex: 1,
   display: "flex",
   justifyContent: "center",
-  gap: "0",
   maxWidth: "700px",
   margin: "0 auto 80px",
   background: "rgba(255,255,255,0.03)",
@@ -368,6 +436,7 @@ const trustCard = {
   border: "1px solid",
   borderRadius: "20px",
   padding: "28px",
+  cursor: "default",
 };
 
 const trustIconBox = {
@@ -438,7 +507,6 @@ const featuredCard = {
   textDecoration: "none",
   color: "#fff",
   overflow: "hidden",
-  transition: "border-color 0.2s",
 };
 
 const imgWrapper = {
@@ -447,6 +515,7 @@ const imgWrapper = {
   display: "flex",
   justifyContent: "center",
   borderBottom: "1px solid rgba(255,255,255,0.06)",
+  overflow: "hidden",
 };
 
 const phoneImg = {
@@ -485,6 +554,7 @@ const cardPrice = {
 const cardArrow = {
   color: "#1dbf73",
   fontSize: "18px",
+  display: "inline-block",
 };
 
 const ctaBanner = {
@@ -492,7 +562,6 @@ const ctaBanner = {
   zIndex: 1,
   maxWidth: "1100px",
   margin: "0 auto 80px",
-  padding: "0 24px",
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
@@ -502,11 +571,10 @@ const ctaBanner = {
   gap: "24px",
   flexWrap: "wrap",
   padding: "36px 40px",
+  cursor: "default",
 };
 
-const ctaLeft = {
-  flex: 1,
-};
+const ctaLeft = { flex: 1 };
 
 const ctaTitle = {
   fontSize: "22px",
@@ -522,6 +590,7 @@ const ctaDesc = {
 };
 
 const ctaBtn = {
+  display: "inline-block",
   background: "#1dbf73",
   color: "#02130d",
   padding: "14px 28px",
